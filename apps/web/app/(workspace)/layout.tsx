@@ -11,7 +11,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (user && user.sessionState !== "ACTIVE") redirect("/account-setup");
   const canRead = Boolean(user?.permissions.includes("*") || user?.permissions.includes("data:read") || process.env.REQUIRE_AUTH !== "true");
   const shops = canRead ? await apiGet<Shop[]>("/shops").catch(() => []) : [];
-  return <AppShell demo={process.env.DEMO_MODE !== "false"} user={user} globalState={summarizeGlobalState(shops)}>{children}</AppShell>;
+  return <AppShell demo={process.env.DEMO_MODE === "true"} user={user} globalState={summarizeGlobalState(shops)}>{children}</AppShell>;
 }
 
 function summarizeGlobalState(shops: Shop[]) {

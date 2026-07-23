@@ -15,6 +15,10 @@ describe("production environment validation", () => {
     expect(() => validateApiEnvironment({ NODE_ENV: "development", DEMO_MODE: "true" })).not.toThrow();
   });
 
+  it("treats an omitted demo flag as a live environment", () => {
+    expect(() => validateApiEnvironment({ NODE_ENV: "development" })).toThrowError(/DATABASE_URL.*REDIS_URL.*CREDENTIAL_MASTER_KEY_BASE64/);
+  });
+
   it("accepts a complete production API environment", () => {
     expect(() => validateApiEnvironment(validApiEnvironment())).not.toThrow();
   });

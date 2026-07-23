@@ -4,7 +4,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 @Injectable()
 export class InternalServiceGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    if (process.env.DEMO_MODE !== "false") return true;
+    if (process.env.DEMO_MODE === "true") return true;
     const configured = process.env.INTERNAL_SERVICE_TOKEN;
     if (!configured || configured.length < 32) throw new Error("INTERNAL_SERVICE_TOKEN must contain at least 32 characters");
     const request = context.switchToHttp().getRequest<{ headers: Record<string, string | string[] | undefined> }>();

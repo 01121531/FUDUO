@@ -35,7 +35,7 @@ describe("ModelProviderService", () => {
   });
 
   it("keeps API keys out of all management responses and disables assigned profiles with a provider", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const service = new ModelProviderService({ enabled: false } as never);
     const secret = "sk-demo-secret-value";
     const created = await service.create({
@@ -89,7 +89,7 @@ describe("ModelProviderService", () => {
   });
 
   it("tests model discovery with redirects disabled", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ data: [{ id: "model-b" }, { id: "model-a" }] }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -104,7 +104,7 @@ describe("ModelProviderService", () => {
   });
 
   it("uses one fallback after a primary failure and records provider failure rates", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("upstream failed", { status: 503 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: "经营摘要" } }] }), { status: 200 }));
@@ -122,7 +122,7 @@ describe("ModelProviderService", () => {
   });
 
   it("sends bounded conversation history before the current business context", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "第二家店铺摘要" } }] }), { status: 200 }));
     const service = new ModelProviderService({ enabled: false } as never);
     const provider = await service.create({ name: "OpenAI", type: "openai-compatible", baseUrl: "https://api.openai.com/v1", apiKey: "sk-history", defaultModel: "model-history" });
@@ -142,7 +142,7 @@ describe("ModelProviderService", () => {
   });
 
   it("streams OpenAI-compatible completion deltas as they arrive", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response([
       'data: {"choices":[{"delta":{"content":"实时"}}]}',
       'data: {"choices":[{"delta":{"content":"回答"}}]}',
@@ -162,7 +162,7 @@ describe("ModelProviderService", () => {
   });
 
   it("does not mix a fallback response into an already-started stream", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response([
         'data: {"choices":[{"delta":{"content":"部分回答"}}]}',
@@ -185,7 +185,7 @@ describe("ModelProviderService", () => {
   });
 
   it("does not count a caller cancellation as a provider failure", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => new Promise((_resolve, reject) => {
       const signal = init?.signal;
       signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
@@ -203,7 +203,7 @@ describe("ModelProviderService", () => {
   });
 
   it("routes each OpenClaw request through the current default profile and uses one fallback", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("primary unavailable", { status: 503 }))
       .mockResolvedValueOnce(new Response("data: {\"choices\":[{\"delta\":{\"content\":\"备用\"}}]}\n\ndata: [DONE]\n\n", {
@@ -232,7 +232,7 @@ describe("ModelProviderService", () => {
   });
 
   it("adapts an Anthropic default model without exposing its API key", async () => {
-    delete process.env.DEMO_MODE;
+    process.env.DEMO_MODE = "true";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
       id: "msg_1",
       stop_reason: "end_turn",

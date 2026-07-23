@@ -15,7 +15,7 @@ export class HealthController {
   @Public()
   @Get()
   health() {
-    return ok({ status: "ok", demoMode: process.env.DEMO_MODE !== "false", timestamp: new Date().toISOString() });
+    return ok({ status: "ok", demoMode: process.env.DEMO_MODE === "true", timestamp: new Date().toISOString() });
   }
 
   @Public()

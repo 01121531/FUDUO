@@ -22,7 +22,7 @@ export class CredentialService implements OnModuleInit {
   private readonly vault: VaultCipher;
 
   constructor(@Optional() @Inject(DatabaseService) private readonly database?: DatabaseService) {
-    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE !== "false");
+    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE === "true");
   }
 
   async onModuleInit() {

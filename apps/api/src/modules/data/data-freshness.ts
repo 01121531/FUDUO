@@ -53,8 +53,17 @@ function resolveType(states: PersistedDataSyncState[], expectedDates: string[], 
   const hasFailureAfterSuccess = expected.some((state) => state?.lastAttemptStatus === "FAILED"
     && (!state.lastSuccessAt || state.lastAttemptAt.getTime() >= state.lastSuccessAt.getTime()));
   const missing = expected.some((state) => !state?.lastSuccessAt);
-  const dataAsOf = successes.length ? new Date(Math.min(...successes.map((item) => item.getTime()))) : null;
-  const freshness = missing ? "UNKNOWN" : hasFailureAfterSuccess ? "STALE" : calculateFreshness(dataAsOf, now);
+  const todayState = byDate.get(shanghaiDateKey(now));
+  const dataAsOf = todayState?.lastSuccessAt
+    ?? (successes.length ? new Date(Math.max(...successes.map((item) => item.getTime()))) : null);
+  const includesToday = expectedDates.includes(shanghaiDateKey(now));
+  const freshness = missing
+    ? "UNKNOWN"
+    : hasFailureAfterSuccess
+      ? "STALE"
+      : includesToday
+        ? calculateFreshness(todayState?.lastSuccessAt ?? null, now)
+        : "LIVE";
   const sources = expected.map((state) => state?.source ?? null);
   const failure = [...expected]
     .reverse()
@@ -82,6 +91,15 @@ function enumerateDateKeys(start: string, end: string) {
 
 function dateKey(value: Date) {
   return value.toISOString().slice(0, 10);
+}
+
+function shanghaiDateKey(value: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
 }
 
 function combineSources(values: Array<string | null>) {

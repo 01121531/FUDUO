@@ -18,6 +18,17 @@ interface Props {
   canSync: boolean;
 }
 
+interface SyncRunResponse {
+  id: string;
+  status: string;
+}
+
+interface ApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: { message?: string };
+}
+
 const periods: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "today", label: "今天" },
   { value: "yesterday", label: "昨天" },
@@ -25,6 +36,8 @@ const periods: Array<{ value: DashboardPeriod; label: string }> = [
   { value: "30d", label: "近 30 天" },
 ];
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+const LIVE_SYNC_TYPES = ["sales-live-sync", "orders-sync", "refunds-sync"] as const;
+const TERMINAL_SYNC_STATUSES = new Set(["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED"]);
 
 export function DashboardControls({ period, shops, selectedShopIds, syncTradeDate, customStart, customEnd, canSync }: Props) {
   const router = useRouter();
@@ -45,6 +58,12 @@ export function DashboardControls({ period, shops, selectedShopIds, syncTradeDat
 
   useEffect(() => { setSelection(new Set(selectedShopIds)); }, [selectedShopIds]);
   useEffect(() => { setStart(customStart); setEnd(customEnd); }, [customStart, customEnd]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [router]);
 
   function toggleShop(id: number) {
     setSelection((current) => {
@@ -74,16 +93,28 @@ export function DashboardControls({ period, shops, selectedShopIds, syncTradeDat
     setSyncing(true);
     setNotice(null);
     try {
-      const response = await fetch(`${API_URL}/sync/runs`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "sales-live-sync", tradeDate: syncTradeDate, ...(selectedShopIds.length ? { shopIds: selectedShopIds.map(String) } : {}) }),
+      const runs = await Promise.all(LIVE_SYNC_TYPES.map(async (type) => {
+        const response = await fetch(`${API_URL}/sync/runs`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type, tradeDate: syncTradeDate, ...(selectedShopIds.length ? { shopIds: selectedShopIds.map(String) } : {}) }),
+        });
+        return readApiResponse<SyncRunResponse>(response, "同步任务创建失败");
+      }));
+      setNotice({
+        type: "success",
+        text: `${syncTradeDate}${selectedShopIds.length ? ` · ${selectedShopIds.length} 家店铺` : " · 全部店铺"}销售、订单和退款同步任务已创建`,
       });
-      const body = await response.json() as { success: boolean; error?: { message?: string } };
-      if (!response.ok || !body.success) throw new Error(body.error?.message ?? "同步任务创建失败");
-      setNotice({ type: "success", text: `${syncTradeDate}${selectedShopIds.length ? ` · ${selectedShopIds.length} 家店铺` : " · 全部店铺"}同步任务已创建` });
-      window.setTimeout(() => router.refresh(), 800);
+      const completed = await waitForSyncRuns(runs.map((run) => run.id));
+      router.refresh();
+      if (!completed) {
+        setNotice({ type: "success", text: "同步任务仍在后台执行，页面会自动更新" });
+      } else if (completed.some((run) => run.status !== "SUCCEEDED")) {
+        setNotice({ type: "danger", text: "同步已结束，但部分数据未成功，请打开同步中心查看" });
+      } else {
+        setNotice({ type: "success", text: "销售、订单和退款数据已同步到最新状态" });
+      }
     } catch (error) {
       setNotice({ type: "danger", text: error instanceof Error ? error.message : "同步任务创建失败" });
     } finally {
@@ -117,10 +148,44 @@ export function DashboardControls({ period, shops, selectedShopIds, syncTradeDat
           <div className="store-filter-footer"><button className="button" onClick={() => setSelection(new Set())}>全部店铺</button><button className="button primary" onClick={applyShops}>应用筛选</button></div>
         </div>
       </details>
-      {canSync ? <button className="button primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}{syncing ? "正在创建" : "立即同步"}</button> : null}
+      {canSync ? <button className="button primary" onClick={() => void sync()} disabled={syncing}>{syncing ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}{syncing ? "同步中" : "立即同步"}</button> : null}
     </div>
     <div className="dashboard-action-status" aria-live="polite">{notice ? <span className={notice.type}>{notice.text}</span> : null}</div>
   </div>;
+}
+
+async function waitForSyncRuns(ids: string[]) {
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    await delay(attempt === 0 ? 800 : 2_000);
+    if (document.visibilityState !== "visible") continue;
+    const runs = await Promise.all(ids.map(async (id) => {
+      const response = await fetch(`${API_URL}/sync/runs/${encodeURIComponent(id)}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      return readApiResponse<SyncRunResponse>(response, "无法读取同步状态");
+    }));
+    if (runs.every((run) => TERMINAL_SYNC_STATUSES.has(run.status))) return runs;
+  }
+  return null;
+}
+
+async function readApiResponse<T>(response: Response, fallback: string): Promise<T> {
+  const raw = await response.text();
+  let body: ApiEnvelope<T> | null = null;
+  try {
+    body = raw ? JSON.parse(raw) as ApiEnvelope<T> : null;
+  } catch {
+    throw new Error(response.ok ? `${fallback}：服务返回格式异常` : `${fallback}：服务暂时不可用（HTTP ${response.status}）`);
+  }
+  if (!response.ok || !body?.success || body.data === undefined) {
+    throw new Error(body?.error?.message ?? `${fallback}（HTTP ${response.status}）`);
+  }
+  return body.data;
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
 function dashboardUrl(period: DashboardPeriod, shopIds: number[], start?: string, end?: string) {

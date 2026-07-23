@@ -2,6 +2,12 @@ import { expect, test } from "@playwright/test";
 import { waitForAppReady } from "./helpers";
 
 test("dashboard filters stay in the URL and a manual sync reports success", async ({ page }) => {
+  const submittedTypes: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "POST" || !request.url().endsWith("/api/sync/runs")) return;
+    const body = request.postDataJSON() as { type?: string };
+    if (body.type) submittedTypes.push(body.type);
+  });
   await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
   await waitForAppReady(page);
 
@@ -34,6 +40,24 @@ test("dashboard filters stay in the URL and a manual sync reports success", asyn
 
   await page.getByRole("button", { name: "立即同步" }).click();
   await expect(page.getByText(/同步任务已创建/)).toBeVisible();
+  await expect.poll(() => [...submittedTypes].sort()).toEqual(["orders-sync", "refunds-sync", "sales-live-sync"]);
+});
+
+test("dashboard reports a non-JSON synchronization failure without exposing a parser error", async ({ page }) => {
+  await page.route("**/api/sync/runs", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ status: 500, contentType: "text/plain", body: "Internal Server Error" });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+
+  await page.getByRole("button", { name: "立即同步" }).click();
+  const status = page.locator(".dashboard-action-status");
+  await expect(status).toContainText("服务暂时不可用（HTTP 500）");
+  await expect(status).not.toContainText("Unexpected token");
 });
 
 test("sync center exposes filters, recovery, and an accessible detail drawer", async ({ page }) => {

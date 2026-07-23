@@ -10,7 +10,7 @@ export class EnvironmentValidationError extends Error {
 export function validateApiEnvironment(env: Environment = process.env) {
   const issues: string[] = [];
   const production = env.NODE_ENV === "production";
-  const live = env.DEMO_MODE === "false";
+  const live = env.DEMO_MODE !== "true";
   if (production && !live) issues.push("DEMO_MODE must be false in production");
   if (!live) return finish(issues);
 

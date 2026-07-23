@@ -3,7 +3,7 @@ import { createPrismaClient, type PrismaClient } from "@fuduo/database";
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
-  readonly enabled = process.env.DEMO_MODE === "false";
+  readonly enabled = process.env.DEMO_MODE !== "true";
   private client: PrismaClient | null = null;
 
   get prisma(): PrismaClient {

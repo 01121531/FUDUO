@@ -18,7 +18,7 @@ export class AuthService implements OnModuleInit {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Optional() @Inject(AccessControlService) private readonly access?: AccessControlService,
   ) {
-    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE !== "false");
+    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE === "true");
   }
 
   async onModuleInit() {

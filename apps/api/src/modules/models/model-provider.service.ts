@@ -87,7 +87,7 @@ export class ModelProviderService {
   private readonly demoProfiles = new Map<ModelProfileKey, DemoProfile>();
 
   constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {
-    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE !== "false");
+    this.vault = new VaultCipher(process.env.CREDENTIAL_MASTER_KEY_BASE64, process.env.DEMO_MODE === "true");
     if (!database.enabled) {
       this.demoProviders.set("provider-deepseek", demoProvider("provider-deepseek", "DeepSeek", "https://api.deepseek.com", "deepseek-chat"));
       this.demoProviders.set("provider-qwen", demoProvider("provider-qwen", "通义千问", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus"));

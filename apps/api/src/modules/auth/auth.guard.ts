@@ -14,7 +14,7 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (process.env.DEMO_MODE !== "false") return true;
+    if (process.env.DEMO_MODE === "true") return true;
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [context.getHandler(), context.getClass()])) return true;
     const request = context.switchToHttp().getRequest<{
       cookies?: Record<string, string>;

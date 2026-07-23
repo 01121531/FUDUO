@@ -35,6 +35,33 @@ describe("resolveDataFreshness", () => {
 
     expect(result).toMatchObject({ freshness: "UNKNOWN", partial: true });
   });
+
+  it("uses today's successful sync time for a complete multi-day range", () => {
+    const result = resolveDataFreshness([
+      state("SALES", "2026-07-21", "2026-07-21T15:00:00.000Z"),
+      state("SALES", "2026-07-22", "2026-07-22T15:00:00.000Z"),
+      state("SALES", "2026-07-23", "2026-07-23T07:55:00.000Z"),
+    ], ["SALES"], "2026-07-21", "2026-07-23", now);
+
+    expect(result).toMatchObject({
+      freshness: "LIVE",
+      partial: false,
+      dataAsOf: "2026-07-23T07:55:00.000Z",
+    });
+  });
+
+  it("treats a complete historical range as available without aging it by fetch time", () => {
+    const result = resolveDataFreshness([
+      state("ORDERS", "2026-07-21", "2026-07-21T15:00:00.000Z"),
+      state("ORDERS", "2026-07-22", "2026-07-22T15:00:00.000Z"),
+    ], ["ORDERS"], "2026-07-21", "2026-07-22", now);
+
+    expect(result).toMatchObject({
+      freshness: "LIVE",
+      partial: false,
+      dataAsOf: "2026-07-22T15:00:00.000Z",
+    });
+  });
 });
 
 function state(dataType: string, tradeDate: string, successAt: string): PersistedDataSyncState {

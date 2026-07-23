@@ -20,16 +20,16 @@
 | 富多真实响应兼容性、云端出口、Token 刷新、销售口径 | 待真实环境验收 | `packages/fuduo-sdk/contracts/manifest.json` | 所有条目仍为 `realResponseVerified: false` |
 | PDD 会话、请求边界和代理传输接口 | 已验证（本地） | `packages/pdd-sdk` | 合成 Fixture、主机/路径/Header/重试测试 |
 | PDD 真实业务端点、Cookie 与出口绑定 | 未完成 | `packages/pdd-sdk/contracts/manifest.json` | 缺批准端点、真实脱敏响应和代理绑定实验 |
-| 店铺、销售、订单、退款同步与 7 天校正 | 已验证（本地） | `apps/worker/src/sync-service.ts` | Worker 单元测试 |
+| 店铺、销售、订单、退款同步与 7 天校正 | 已验证（本地） | `apps/worker/src/sync-service.ts`、`sync-scheduler.ts` | 三类经营数据每 5 分钟调度；Worker 单元测试 |
 | PostgreSQL + Redis + BullMQ 幂等、锁与并发 | 待真实环境验收 | `apps/worker`、`packages/database` | 当前仅 mock 测试；缺容器化集成测试结果 |
-| Dashboard、店铺详情、图表、数据新鲜度 | 已验证（本地） | `apps/web/app/(workspace)`、`components` | Web 单测与四视口 Playwright |
+| Dashboard、店铺详情、图表、数据新鲜度 | 已验证（本地） | `apps/web/app/(workspace)`、`components` | 默认真实模式、30 秒页面刷新、三类手动同步、跨日新鲜度测试 |
 | Web Chat、只读工具、模型路由和备用模型 | 已验证（本地） | `apps/api/src/modules/chat`、`models`、`tools` | API 单测和 Demo E2E |
 | AI 对话生成 Skill/MCP 草案、校验、审批、安装和失败回滚 | 已验证（本地） | `apps/api/src/modules/extensions`、`apps/openclaw-admin/src/extension-installer.ts`、`apps/web/components/extension-workbench.tsx` | API 与 OpenClaw Admin 单元测试、OpenClaw MCP CLI 检查 |
 | 真实模型供应商与 Token 用量指标 | 待真实环境验收 | `apps/api/src/modules/models` | 缺真实供应商调用；`model_tokens_total` 尚无可靠数据源 |
 | OpenClaw 微信私聊、pairing、白名单、昵称和状态 | 待真实环境验收 | `apps/openclaw-admin`、`plugins/openclaw-fuduo` | 本地管理协议测试；缺腾讯账号实测 |
 | 日报、周报、计划和渠道投递 | 已验证（本地） | `apps/api/src/modules/reports`、`apps/worker/src/report-*` | 单元测试和 Demo E2E |
 | Docker Compose、HTTPS、迁移、健康检查、加密备份 | 已验证（静态） | `deploy/` | `pnpm deploy:validate`；缺实际容器启动和恢复 |
-| GitHub Release、GHCR 镜像、在线版本检查和宿主机更新/回滚脚本 | 已验证（静态） | `.github/workflows/release.yml`、`deploy/update.*` | `v0.1.0` 云端镜像构建成功；更新器待目标服务器演练 |
+| GitHub Release、GHCR 镜像、在线版本检查和宿主机更新/回滚脚本 | 已验证（静态） | `.github/workflows/release.yml`、`deploy/update.*` | `v0.2.0` 云端镜像构建成功；更新器待目标服务器演练 |
 | 日志/备份敏感值扫描 | 已验证（工具） | `scripts/scan-sensitive-output.mjs` | 脚本测试与本地 `.runtime` 扫描 |
 | 生产日志、PostgreSQL 备份、OpenClaw 归档扫描 | 待真实环境验收 | `deploy/SECURITY_VALIDATION.md` | 必须对部署产物显式执行扫描 |
 
@@ -44,13 +44,15 @@ pnpm verify:release
 2026-07-24 最近一次本地验证：
 
 - 11 个工作区包类型检查通过；
-- 360 项业务单元/契约测试与 3 项敏感输出扫描器测试通过；
+- 362 项业务单元/契约测试与 3 项敏感输出扫描器测试通过；
 - 11 个工作区包生产构建通过；
 - 编译后的 API 使用 `production` 工作区导出启动并通过健康检查；
-- 74 项 Playwright E2E 通过，包含扩展工厂完整安装流程及新页面四视口检查；
+- 75 项 Playwright E2E 通过，包含三类经营数据手动同步、非 JSON 错误回归、扩展工厂完整安装流程及新页面四视口检查；
 - 默认 `.runtime` 敏感输出扫描与 CI YAML 解析通过。
 
 Playwright 使用 `DEMO_MODE=true` 和 `REQUIRE_AUTH=false`，只能证明页面与本地业务交互，不替代真实登录、扫码、数据库、模型和微信验收。
+
+运行时只有显式 `DEMO_MODE=true` 才加载测试数据；未设置或设置为 `false` 均进入真实模式。真实模式缺少 PostgreSQL、Redis、主密钥或内部服务密钥时会直接报告配置错误，不会回退到固定数据。
 
 ## 生产发布阻塞项
 
