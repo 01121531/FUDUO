@@ -1,0 +1,28 @@
+{
+  "name": "@fuduo/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node --conditions=production dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src --passWithNoTests",
+    "test:integration:redis": "vitest run src/redis-bullmq.integration.test.ts"
+  },
+  "dependencies": {
+    "@fuduo/credential-vault": "workspace:*",
+    "@fuduo/database": "workspace:*",
+    "@fuduo/fuduo-sdk": "workspace:*",
+    "@fuduo/shared": "workspace:*",
+    "bullmq": "latest",
+    "ioredis": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}

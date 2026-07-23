@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "records": [
+      {
+        "businessShopId": "10001",
+        "platformRefundId": "REFUND_REDACTED_001",
+        "platformOrderId": "ORDER_REDACTED_001",
+        "refundAmount": "18.25",
+        "performanceImpact": "-18.25",
+        "platformOccurredAt": "2026-07-21T02:30:00.000Z"
+      },
+      {
+        "businessShopId": 10001,
+        "platformRefundId": "REFUND_REDACTED_002",
+        "platformOrderId": "ORDER_REDACTED_002",
+        "refundAmount": null,
+        "performanceImpact": null,
+        "platformOccurredAt": null
+      }
+    ],
+    "total": "2",
+    "page": "1",
+    "size": "100"
+  },
+  "traceId": "fixture-trace-aftersales-list"
+}

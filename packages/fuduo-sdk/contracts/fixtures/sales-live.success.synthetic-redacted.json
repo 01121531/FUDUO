@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "shopId": "10001",
+    "salesStatDate": "2026-07-21",
+    "salesAmount": "1288.50",
+    "transactionCount": "42",
+    "payBuyerCount": "39",
+    "conversionRate": "0.1845",
+    "averageOrderValue": "30.678571",
+    "repeatBuyerRate": null,
+    "yesterdayFollowerCount": "12",
+    "yesterdayRefundAmount": "18.25",
+    "yesterdayRefundCount": "2",
+    "yesterdayVisitorValue": "",
+    "status": "SUCCESS",
+    "message": null,
+    "sourceUpdatedAt": "2026-07-21T08:05:00+08:00"
+  },
+  "traceId": "fixture-trace-sales-live"
+}

@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "result": {
+    "requestId": "fixture-request-not-live",
+    "records": [
+      {
+        "entityId": "ENTITY_REDACTED_001",
+        "amount": "88.50",
+        "status": "FIXTURE_READY"
+      }
+    ],
+    "total": 1
+  }
+}

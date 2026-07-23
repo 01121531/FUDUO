@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "pollStatus": "SUCCESS",
+    "login": {
+      "accessToken": "[REDACTED_ACCESS_TOKEN]",
+      "name": "Fixture User",
+      "disableReason": null
+    }
+  },
+  "traceId": "fixture-trace-qr-login-poll"
+}

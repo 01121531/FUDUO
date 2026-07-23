@@ -1,0 +1,515 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CredentialStatus {
+  UNCONFIGURED
+  LOGIN_PENDING
+  ACTIVE
+  REFRESHING
+  REAUTH_REQUIRED
+  REVOKED
+}
+
+enum Freshness {
+  LIVE
+  RECENT
+  STALE
+  UNKNOWN
+}
+
+enum AuthSessionState {
+  TOTP_REQUIRED
+  PASSWORD_CHANGE_REQUIRED
+  TOTP_ENROLLMENT_REQUIRED
+  ACTIVE
+}
+
+model User {
+  id                 String           @id @default(uuid()) @db.Uuid
+  email              String           @unique
+  displayName        String
+  passwordHash       String
+  totpSecretCipher   Bytes?
+  totpSecretIv       Bytes?
+  totpSecretTag      Bytes?
+  totpEnabled        Boolean          @default(false)
+  mustChangePassword Boolean          @default(false)
+  active             Boolean          @default(true)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(3)
+  conversations      Conversation[]
+  auditLogs          AuditLog[]
+  userRoles          UserRole[]
+  shopScopes         UserShopScope[]
+  channelUsers       ChannelUser[]
+  toolRuns           ToolRun[]
+  reportSnapshots    ReportSnapshot[]
+  sessions           UserSession[]
+  loginSessions      LoginSession[]
+  totpEnrollment     TotpEnrollment?
+}
+
+model TotpEnrollment {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretCipher Bytes
+  secretIv     Bytes
+  secretTag    Bytes
+  attempts     Int      @default(0)
+  expiresAt    DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model UserSession {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @db.Uuid
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String           @unique
+  state      AuthSessionState @default(ACTIVE)
+  attempts   Int              @default(0)
+  expiresAt  DateTime         @db.Timestamptz(3)
+  revokedAt  DateTime?        @db.Timestamptz(3)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, expiresAt])
+}
+
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  code        String     @unique
+  name        String
+  permissions String[]
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  userRoles   UserRole[]
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model UserShopScope {
+  userId     String   @db.Uuid
+  shopId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@id([userId, shopId])
+  @@index([shopId])
+}
+
+model ErpCredential {
+  id                String           @id @default(uuid()) @db.Uuid
+  singletonKey      String           @unique @default("primary")
+  status            CredentialStatus @default(UNCONFIGURED)
+  issuer            String?
+  subject           String?
+  userId            String?
+  accessTokenCipher Bytes?
+  accessTokenIv     Bytes?
+  accessTokenTag    Bytes?
+  tokenVersion      Int              @default(0)
+  expiresAt         DateTime?        @db.Timestamptz(3)
+  lastRefreshedAt   DateTime?        @db.Timestamptz(3)
+  lastVerifiedAt    DateTime?        @db.Timestamptz(3)
+  lastErrorCode     String?
+  lastErrorMessage  String?
+  accountName       String?
+  shopCount         Int?
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
+}
+
+model LoginSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  ownerId       String    @db.Uuid
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status        String
+  expiresAt     DateTime  @db.Timestamptz(3)
+  accountName   String?
+  shopCount     Int?
+  errorCode     String?
+  errorMessage  String?
+  errorRecovery String?
+  finishedAt    DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([ownerId, status])
+  @@index([status, expiresAt])
+  @@index([updatedAt])
+}
+
+model Shop {
+  id             String          @id @default(uuid()) @db.Uuid
+  fuduoShopId    BigInt          @unique
+  fuduoAccountId BigInt?
+  platformShopId String?
+  platformCode   String          @default("pdd")
+  name           String
+  status         String          @default("ACTIVE")
+  loginStatus    String?
+  lastVisibleAt  DateTime?       @db.Timestamptz(3)
+  lastSyncedAt   DateTime?       @db.Timestamptz(3)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+  salesDaily     SalesDaily[]
+  salesSnapshots SalesSnapshot[]
+  orderDaily     OrderDaily[]
+  refundDaily    RefundDaily[]
+  accounts       ShopAccount[]
+  userScopes     UserShopScope[]
+  dataSyncStates DataSyncState[]
+
+  @@index([status, lastVisibleAt])
+}
+
+model DataSyncState {
+  id                String    @id @default(uuid()) @db.Uuid
+  shopId            String    @db.Uuid
+  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  dataType          String
+  tradeDate         DateTime  @db.Date
+  lastSuccessAt     DateTime? @db.Timestamptz(3)
+  lastAttemptAt     DateTime  @db.Timestamptz(3)
+  lastAttemptStatus String
+  source            String
+  sourceUpdatedAt   DateTime? @db.Timestamptz(3)
+  partial           Boolean   @default(false)
+  errorCode         String?
+  currentAttemptKey String?   @db.Uuid
+
+  @@unique([shopId, dataType, tradeDate])
+  @@index([dataType, tradeDate, lastAttemptStatus])
+}
+
+model ShopAccount {
+  id                String    @id @default(uuid()) @db.Uuid
+  shopId            String    @db.Uuid
+  shop              Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  externalAccountId BigInt    @unique
+  platformShopId    String?
+  loginStatus       String?
+  lastPreparedAt    DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model SalesDaily {
+  id                String    @id @default(uuid()) @db.Uuid
+  shopId            String    @db.Uuid
+  shop              Shop      @relation(fields: [shopId], references: [id])
+  tradeDate         DateTime  @db.Date
+  salesAmount       Decimal?  @db.Decimal(20, 2)
+  transactionCount  Int?
+  payBuyerCount     Int?
+  averageOrderValue Decimal?  @db.Decimal(20, 2)
+  refundAmount      Decimal?  @db.Decimal(20, 2)
+  freshness         Freshness @default(UNKNOWN)
+  source            String
+  sourceUpdatedAt   DateTime? @db.Timestamptz(3)
+  fetchedAt         DateTime  @default(now()) @db.Timestamptz(3)
+  schemaVersion     Int       @default(1)
+
+  @@unique([shopId, tradeDate])
+  @@index([tradeDate])
+}
+
+model SalesSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  shopId           String   @db.Uuid
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  tradeDate        DateTime @db.Date
+  salesAmount      Decimal? @db.Decimal(20, 2)
+  transactionCount Int?
+  refundAmount     Decimal? @db.Decimal(20, 2)
+  source           String
+  capturedAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([shopId, tradeDate, capturedAt])
+}
+
+model OrderDaily {
+  id             String   @id @default(uuid()) @db.Uuid
+  shopId         String   @db.Uuid
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  tradeDate      DateTime @db.Date
+  orderCount     Int?
+  paidOrderCount Int?
+  paidAmount     Decimal? @db.Decimal(20, 2)
+  source         String
+  fetchedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([shopId, tradeDate])
+}
+
+model RefundDaily {
+  id           String   @id @default(uuid()) @db.Uuid
+  shopId       String   @db.Uuid
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  tradeDate    DateTime @db.Date
+  refundCount  Int?
+  refundAmount Decimal? @db.Decimal(20, 2)
+  source       String
+  fetchedAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([shopId, tradeDate])
+}
+
+model SyncJob {
+  id             String   @id @default(uuid()) @db.Uuid
+  queueName      String
+  idempotencyKey String   @unique
+  payload        Json
+  status         String
+  attempts       Int      @default(0)
+  availableAt    DateTime @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model SyncRun {
+  id           String        @id @default(uuid()) @db.Uuid
+  type         String
+  status       String
+  requestedBy  String?
+  totalItems   Int           @default(0)
+  successItems Int           @default(0)
+  failedItems  Int           @default(0)
+  errorCode    String?
+  errorMessage String?
+  payload      Json?
+  startedAt    DateTime?     @db.Timestamptz(3)
+  finishedAt   DateTime?     @db.Timestamptz(3)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  items        SyncRunItem[]
+}
+
+model SyncRunItem {
+  id           String    @id @default(uuid()) @db.Uuid
+  syncRunId    String    @db.Uuid
+  syncRun      SyncRun   @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  dataType     String
+  tradeDate    DateTime  @db.Date
+  fuduoShopId  BigInt
+  shopName     String
+  status       String
+  attempt      Int       @default(1)
+  errorCode    String?
+  errorMessage String?
+  startedAt    DateTime  @default(now()) @db.Timestamptz(3)
+  finishedAt   DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([syncRunId, dataType, tradeDate, fuduoShopId])
+  @@index([syncRunId, tradeDate, dataType])
+  @@index([fuduoShopId, tradeDate])
+}
+
+model ModelProvider {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  type           String
+  baseUrl        String
+  apiKeyCipher   Bytes?
+  apiKeyIv       Bytes?
+  apiKeyTag      Bytes?
+  defaultModel   String?
+  active         Boolean        @default(true)
+  lastTestedAt   DateTime?      @db.Timestamptz(3)
+  lastTestStatus String?
+  requestCount   Int            @default(0)
+  failureCount   Int            @default(0)
+  lastUsedAt     DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+  profiles       ModelProfile[]
+}
+
+model ModelProfile {
+  id          String        @id @default(uuid()) @db.Uuid
+  key         String        @unique
+  providerId  String        @db.Uuid
+  provider    ModelProvider @relation(fields: [providerId], references: [id])
+  model       String
+  temperature Decimal?      @db.Decimal(4, 3)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+}
+
+model ChannelAccount {
+  id          String        @id @default(uuid()) @db.Uuid
+  channel     String
+  externalId  String
+  displayName String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+  users       ChannelUser[]
+
+  @@unique([channel, externalId])
+}
+
+model ChannelUser {
+  id                  String         @id @default(uuid()) @db.Uuid
+  channelAccountId    String         @db.Uuid
+  channelAccount      ChannelAccount @relation(fields: [channelAccountId], references: [id], onDelete: Cascade)
+  externalUserId      String
+  externalDisplayName String?        @db.VarChar(120)
+  userId              String         @db.Uuid
+  user                User           @relation(fields: [userId], references: [id])
+  pairedAt            DateTime       @default(now()) @db.Timestamptz(3)
+  revokedAt           DateTime?      @db.Timestamptz(3)
+
+  @@unique([channelAccountId, externalUserId])
+}
+
+model Conversation {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id])
+  channel     String
+  externalKey String?
+  title       String?
+  revokedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  messages    Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  role           String
+  content        String
+  model          String?
+  toolName       String?
+  toolRunId      String?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  toolRuns       ToolRun[]
+}
+
+model ToolRun {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String?   @db.Uuid
+  user       User?     @relation(fields: [userId], references: [id])
+  messageId  String?   @db.Uuid
+  message    Message?  @relation(fields: [messageId], references: [id])
+  name       String
+  status     String
+  params     Json?
+  resultMeta Json?
+  dataAsOf   DateTime? @db.Timestamptz(3)
+  durationMs Int?
+  errorCode  String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+}
+
+model ScheduledReport {
+  id        String           @id @default(uuid()) @db.Uuid
+  type      String
+  cron      String
+  timezone  String           @default("Asia/Shanghai")
+  active    Boolean          @default(true)
+  shopIds   String[]         @default([])
+  channels  String[]         @default(["WEB", "WECHAT"])
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
+  reports   ReportSnapshot[]
+}
+
+model ReportSnapshot {
+  id                String           @id @default(uuid()) @db.Uuid
+  scheduledReportId String?          @db.Uuid
+  scheduledReport   ScheduledReport? @relation(fields: [scheduledReportId], references: [id])
+  createdByUserId   String?          @db.Uuid
+  createdByUser     User?            @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  shopIds           String[]         @default([])
+  type              String
+  periodStart       DateTime         @db.Date
+  periodEnd         DateTime         @db.Date
+  version           Int              @default(1)
+  data              Json
+  dataAsOf          DateTime         @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  deliveries        ReportDelivery[]
+
+  @@unique([scheduledReportId, periodStart, periodEnd, version])
+  @@index([createdByUserId, createdAt])
+}
+
+model ReportDelivery {
+  id                String         @id @default(uuid()) @db.Uuid
+  reportSnapshotId  String         @db.Uuid
+  reportSnapshot    ReportSnapshot @relation(fields: [reportSnapshotId], references: [id], onDelete: Cascade)
+  channel           String
+  recipient         String
+  status            String         @default("QUEUED")
+  attempts          Int            @default(0)
+  externalMessageId String?
+  leaseToken        String?        @db.Uuid
+  leaseExpiresAt    DateTime?      @db.Timestamptz(3)
+  errorCode         String?
+  lastAttemptAt     DateTime?      @db.Timestamptz(3)
+  sentAt            DateTime?      @db.Timestamptz(3)
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@unique([reportSnapshotId, channel, recipient])
+  @@index([status, createdAt])
+  @@index([status, leaseExpiresAt])
+}
+
+model InboundToolInvocation {
+  id                String    @id @default(uuid()) @db.Uuid
+  channel           String
+  accountId         String
+  externalMessageId String
+  operationKey      String
+  toolName          String
+  status            String    @default("PROCESSING")
+  response          Json?
+  errorCode         String?
+  leaseToken        String?   @db.Uuid
+  leaseExpiresAt    DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@unique([channel, accountId, externalMessageId, operationKey])
+  @@index([status, leaseExpiresAt])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id])
+  channel    String
+  action     String
+  resource   String?
+  result     String
+  traceId    String
+  durationMs Int?
+  params     Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([traceId])
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "SyncRun" ADD COLUMN "payload" JSONB;

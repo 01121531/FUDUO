@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "id": "fixture-user-001",
+    "name": "Fixture User",
+    "nickname": "fixture-user",
+    "phoneVerified": true,
+    "tenantName": "Fixture Tenant"
+  },
+  "traceId": "fixture-trace-iam-me"
+}

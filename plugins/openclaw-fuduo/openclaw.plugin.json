@@ -1,0 +1,68 @@
+{
+  "id": "fuduo-business",
+  "name": "富多经营数据工具",
+  "description": "查询经过权限控制和脱敏处理的富多店铺经营数据。",
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "required": [
+      "apiBaseUrl",
+      "serviceToken"
+    ],
+    "properties": {
+      "apiBaseUrl": {
+        "type": "string",
+        "description": "富多业务 API 基础地址"
+      },
+      "serviceToken": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 32
+          },
+          {
+            "type": "object",
+            "required": [
+              "source",
+              "id"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "env"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,127}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        ],
+        "description": "内部工具接口服务令牌或环境变量引用"
+      }
+    },
+    "additionalProperties": false
+  },
+  "contracts": {
+    "tools": [
+      "list_shops",
+      "get_shop_sales",
+      "compare_shop_sales",
+      "rank_shops_by_sales",
+      "get_sales_summary",
+      "get_shop_orders",
+      "get_shop_refunds",
+      "generate_daily_report",
+      "generate_weekly_report",
+      "get_data_freshness",
+      "get_sync_status"
+    ]
+  }
+}

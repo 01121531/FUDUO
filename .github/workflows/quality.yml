@@ -1,0 +1,134 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chrome for Playwright
+        run: pnpm exec playwright install --with-deps chrome
+
+      - name: Run release quality gate
+        run: pnpm verify:release
+
+      - name: Upload Playwright evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            artifacts/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  infrastructure-integration:
+    name: PostgreSQL 17 / Redis 7 integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: fuduo_ci
+          POSTGRES_USER: fuduo
+          POSTGRES_PASSWORD: fuduo_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fuduo -d fuduo_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+          --health-start-period 5s
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+          --health-start-period 5s
+    env:
+      TEST_DATABASE_URL: postgresql://fuduo:fuduo_ci_password@127.0.0.1:5432/fuduo_ci
+      TEST_REDIS_URL: redis://127.0.0.1:6379/15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply and verify PostgreSQL migrations
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/infrastructure-integration
+          timeout 120s pnpm --filter @fuduo/database db:generate 2>&1 | tee artifacts/infrastructure-integration/prisma-generate.log
+          timeout 120s pnpm --filter @fuduo/database db:deploy 2>&1 | tee artifacts/infrastructure-integration/prisma-deploy.log
+          timeout 120s pnpm --filter @fuduo/database db:deploy 2>&1 | tee artifacts/infrastructure-integration/prisma-redeploy.log
+          timeout 120s pnpm --filter @fuduo/database db:status 2>&1 | tee artifacts/infrastructure-integration/prisma-status.log
+
+      - name: Run PostgreSQL, Redis and BullMQ integration tests
+        run: timeout 300s pnpm test:integration
+
+      - name: Capture infrastructure evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/infrastructure-integration
+          docker inspect --format '{{json .State.Health}}' "${{ job.services.postgres.id }}" > artifacts/infrastructure-integration/postgres-health.json
+          docker inspect --format '{{json .State.Health}}' "${{ job.services.redis.id }}" > artifacts/infrastructure-integration/redis-health.json
+          docker logs "${{ job.services.postgres.id }}" > artifacts/infrastructure-integration/postgres.log 2>&1
+          docker logs "${{ job.services.redis.id }}" > artifacts/infrastructure-integration/redis.log 2>&1
+          docker exec "${{ job.services.postgres.id }}" psql -U fuduo -d fuduo_ci -Atc 'SELECT migration_name, finished_at IS NOT NULL, rolled_back_at IS NULL FROM "_prisma_migrations" ORDER BY migration_name' > artifacts/infrastructure-integration/migrations.txt
+          docker exec "${{ job.services.redis.id }}" redis-cli -n 15 DBSIZE > artifacts/infrastructure-integration/redis-dbsize.txt
+
+      - name: Scan infrastructure evidence for credentials
+        if: always()
+        id: evidence-scan
+        run: node scripts/scan-sensitive-output.mjs artifacts/infrastructure-integration
+
+      - name: Upload infrastructure evidence
+        if: always() && steps.evidence-scan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-integration-results
+          path: artifacts/infrastructure-integration
+          if-no-files-found: error
+          retention-days: 14

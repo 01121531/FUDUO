@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "records": [
+      {
+        "businessShopId": "10001",
+        "platformOrderId": "ORDER_REDACTED_001",
+        "payAmount": "88.50",
+        "orderStatus": 1,
+        "platformOccurredAt": "2026-07-21T01:00:00.000Z"
+      },
+      {
+        "businessShopId": 10001,
+        "platformOrderId": "ORDER_REDACTED_002",
+        "payAmount": null,
+        "orderStatus": "CLOSED",
+        "platformOccurredAt": null
+      }
+    ],
+    "total": "2",
+    "page": "1",
+    "size": "100"
+  },
+  "traceId": "fixture-trace-orders-list"
+}

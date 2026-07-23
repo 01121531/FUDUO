@@ -1,0 +1,34 @@
+{
+  "name": "fuduo-cloud-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @fuduo/web dev",
+    "dev:api": "pnpm --filter @fuduo/api dev",
+    "demo:start": "powershell -ExecutionPolicy Bypass -File scripts/start-local-demo.ps1",
+    "demo:stop": "powershell -ExecutionPolicy Bypass -File scripts/stop-local-demo.ps1",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test && node --test scripts/*.test.mjs && node deploy/validate-deployment.mjs",
+    "test:e2e": "pnpm --filter @fuduo/web test:e2e",
+    "verify:release": "pnpm --filter @fuduo/database db:generate && pnpm typecheck && pnpm test && pnpm build && node scripts/verify-built-runtime.mjs && pnpm test:e2e && pnpm security:scan-output",
+    "verify:runtime": "node scripts/verify-built-runtime.mjs",
+    "deploy:validate": "node deploy/validate-deployment.mjs",
+    "security:scan-output": "node scripts/scan-sensitive-output.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "prettier": "latest",
+    "turbo": "latest",
+    "typescript": "5.9.3",
+    "vitest": "latest",
+    "yaml": "2.9.0"
+  }
+}

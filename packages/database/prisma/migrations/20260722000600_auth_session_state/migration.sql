@@ -1,0 +1,18 @@
+CREATE TYPE "AuthSessionState" AS ENUM (
+  'TOTP_REQUIRED',
+  'PASSWORD_CHANGE_REQUIRED',
+  'TOTP_ENROLLMENT_REQUIRED',
+  'ACTIVE'
+);
+
+ALTER TABLE "User"
+  ADD COLUMN "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "UserSession"
+  ADD COLUMN "state" "AuthSessionState" NOT NULL DEFAULT 'ACTIVE',
+  ADD COLUMN "attempts" INTEGER NOT NULL DEFAULT 0;
+
+UPDATE "UserSession"
+SET "revokedAt" = CURRENT_TIMESTAMP
+WHERE "revokedAt" IS NULL
+  AND "userId" IN (SELECT "id" FROM "User" WHERE "totpEnabled" = false);

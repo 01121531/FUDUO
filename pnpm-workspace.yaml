@@ -1,0 +1,26 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "plugins/*"
+
+allowBuilds:
+  '@google/genai': true
+  '@prisma/engines': true
+  esbuild: true
+  msgpackr-extract: true
+  openclaw: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  tree-sitter-bash: true
+
+onlyBuiltDependencies:
+  - "@google/genai"
+  - "@prisma/engines"
+  - "esbuild"
+  - "msgpackr-extract"
+  - "openclaw"
+  - "prisma"
+  - "protobufjs"
+  - "sharp"
+  - "tree-sitter-bash"

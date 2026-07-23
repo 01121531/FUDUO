@@ -1,0 +1,57 @@
+[
+  {
+    "path": "models.mode",
+    "value": "replace"
+  },
+  {
+    "path": "models.providers.fuduo-runtime.baseUrl",
+    "value": "http://api:3001/api/internal/openclaw/v1"
+  },
+  {
+    "path": "models.providers.fuduo-runtime.api",
+    "value": "openai-completions"
+  },
+  {
+    "path": "models.providers.fuduo-runtime.apiKey",
+    "ref": {
+      "source": "env",
+      "provider": "default",
+      "id": "FUDUO_INTERNAL_SERVICE_TOKEN"
+    }
+  },
+  {
+    "path": "models.providers.fuduo-runtime.models",
+    "value": [
+      {
+        "id": "default",
+        "name": "富多后台当前模型",
+        "reasoning": false,
+        "input": ["text"],
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "contextWindow": 32768,
+        "maxTokens": 4096,
+        "compat": {
+          "supportsUsageInStreaming": false
+        }
+      }
+    ]
+  },
+  {
+    "path": "agents.defaults.models",
+    "value": {
+      "fuduo-runtime/default": {}
+    }
+  },
+  {
+    "path": "agents.defaults.model",
+    "value": {
+      "primary": "fuduo-runtime/default",
+      "fallbacks": []
+    }
+  }
+]

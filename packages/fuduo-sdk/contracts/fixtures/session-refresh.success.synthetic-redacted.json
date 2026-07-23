@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "accessToken": "[REDACTED_ACCESS_TOKEN]",
+    "tokenType": "Bearer",
+    "expiresIn": 28800
+  },
+  "traceId": "fixture-trace-session-refresh"
+}

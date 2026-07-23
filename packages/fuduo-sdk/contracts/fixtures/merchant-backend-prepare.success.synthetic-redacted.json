@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "action": "READY",
+    "message": "fixture session ready",
+    "sesId": "SESSION_REDACTED_001",
+    "loginStatus": "NORMAL",
+    "clientLoginStatus": 1,
+    "session": {
+      "cookie": "[REDACTED]",
+      "cookieSnapshot": "[REDACTED]",
+      "ua": "FixtureBrowser/1.0"
+    }
+  },
+  "traceId": "fixture-trace-merchant-prepare"
+}

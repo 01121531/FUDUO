@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "url": "https://login.work.weixin.qq.com/wwlogin/sso/login?login_type=CorpApp&appid=fixture",
+    "state": "fixture-state-not-live",
+    "redirectUri": "https://erp.fuduo8888.com/wecom-callback"
+  },
+  "traceId": "fixture-trace-qr-login"
+}

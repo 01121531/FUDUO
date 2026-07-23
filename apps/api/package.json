@@ -1,0 +1,40 @@
+{
+  "name": "@fuduo/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node --conditions=production dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fuduo/analytics": "workspace:*",
+    "@fuduo/credential-vault": "workspace:*",
+    "@fuduo/database": "workspace:*",
+    "@fuduo/fuduo-sdk": "workspace:*",
+    "@fuduo/shared": "workspace:*",
+    "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
+    "@nestjs/core": "latest",
+    "@nestjs/platform-fastify": "latest",
+    "@fastify/cookie": "latest",
+    "bullmq": "latest",
+    "class-transformer": "latest",
+    "class-validator": "latest",
+    "fastify": "latest",
+    "ioredis": "latest",
+    "playwright-core": "latest",
+    "reflect-metadata": "latest",
+    "rxjs": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}

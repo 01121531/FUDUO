@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "qr-login-success",
+      "endpoint": "GET /api/v1/auth/wecom/qr-url",
+      "file": "fixtures/qr-login.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "qr-login-poll-success",
+      "endpoint": "GET /api/v1/auth/wecom/poll",
+      "file": "fixtures/qr-login-poll.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "iam-me-success",
+      "endpoint": "GET /api/v1/iam/me",
+      "file": "fixtures/iam-me.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "visible-shops-success",
+      "endpoint": "GET /api/v1/shops/visible/page",
+      "file": "fixtures/visible-shops.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "session-refresh-success",
+      "endpoint": "POST /api/v1/auth/session/refresh",
+      "file": "fixtures/session-refresh.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "sales-live-success",
+      "endpoint": "GET /api/v1/shops/{shopId}/sales-live",
+      "file": "fixtures/sales-live.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "orders-list-success",
+      "endpoint": "POST /api/v1/ops/orders/list",
+      "file": "fixtures/orders-list.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "aftersales-list-success",
+      "endpoint": "POST /api/v1/ops/aftersales/list",
+      "file": "fixtures/aftersales-list.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    },
+    {
+      "id": "merchant-backend-prepare-success",
+      "endpoint": "POST /api/v1/shop-accounts/{accountId}/merchant-backend-prepare",
+      "file": "fixtures/merchant-backend-prepare.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@fuduo/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "production": "./dist/index.js",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./environment": {
+      "production": "./dist/environment.js",
+      "types": "./src/environment.ts",
+      "default": "./src/environment.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}

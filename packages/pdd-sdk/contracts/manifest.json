@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "status": "synthetic-only-awaiting-observed-redacted-response",
+  "contracts": [
+    {
+      "id": "generic-response-success",
+      "scope": "caller-supplied schema parsing",
+      "file": "fixtures/generic-response.success.synthetic-redacted.json",
+      "provenance": "synthetic-redacted",
+      "realResponseVerified": false,
+      "capturedAt": null,
+      "observedClientVersion": null
+    }
+  ],
+  "evidenceGaps": [
+    "No approved PDD business endpoint or response Schema is implemented.",
+    "Cookie binding to cloud IP, proxy outlet, and device profile has not been verified.",
+    "No authorized live response has been captured and redacted."
+  ]
+}

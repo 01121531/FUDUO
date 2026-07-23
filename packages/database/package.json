@@ -1,0 +1,35 @@
+{
+  "name": "@fuduo/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "production": "./dist/index.js",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "typecheck": "prisma validate && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src --passWithNoTests",
+    "test:integration:postgres": "node integration/run-postgres-integration.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "latest",
+    "@prisma/client": "latest",
+    "pg": "latest"
+  },
+  "devDependencies": {
+    "@types/pg": "latest",
+    "dotenv": "latest",
+    "prisma": "latest",
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}

@@ -1,0 +1,437 @@
+name: fuduo-assistant
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE:-fuduo_assistant}
+      POSTGRES_USER: fuduo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        "sh",
+        "-ec",
+        "umask 077; printf 'appendonly yes\nrequirepass %s\n' \"$$REDIS_PASSWORD\" > /tmp/redis.conf; exec redis-server /tmp/redis.conf",
+      ]
+    tmpfs:
+      - /tmp:size=4m,mode=1777
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep PONG",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - backend
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: worker
+    command:
+      [
+        "sh",
+        "-ec",
+        "pnpm --filter @fuduo/database db:deploy && pnpm --filter @fuduo/database db:status",
+      ]
+    environment:
+      DATABASE_URL: postgresql://fuduo:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE:-fuduo_assistant}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  backup:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: backup
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DATABASE:-fuduo_assistant}
+      POSTGRES_USER: fuduo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - postgres-backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/postgres-backup", "--check"]
+      interval: 1h
+      timeout: 10s
+      retries: 2
+      start_period: 10m
+    networks:
+      - backend
+
+  postgres-restore:
+    profiles: ["recovery"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: postgres-restore
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DATABASE:-fuduo_assistant}
+      POSTGRES_USER: fuduo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+    volumes:
+      - postgres-backups:/backups:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    shm_size: 256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NODE_ENV: production
+      DEMO_MODE: "false"
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      WEB_ORIGIN: https://${SITE_ADDRESS}
+      DATABASE_URL: postgresql://fuduo:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE:-fuduo_assistant}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CREDENTIAL_MASTER_KEY_BASE64: ${CREDENTIAL_MASTER_KEY_BASE64}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      CAPTURE_UPLOAD_SECRET: ${CAPTURE_UPLOAD_SECRET}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      BOOTSTRAP_ADMIN_TOTP_SECRET_BASE32: ${BOOTSTRAP_ADMIN_TOTP_SECRET_BASE32}
+      MODEL_PROVIDER_HOST_ALLOWLIST: ${MODEL_PROVIDER_HOST_ALLOWLIST:-}
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
+      OPENCLAW_GATEWAY_URL: http://openclaw:18789
+      OPENCLAW_ADMIN_URL: http://openclaw-admin:18790
+      OPENCLAW_ADMIN_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - edge
+      - backend
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: worker
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://fuduo:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE:-fuduo_assistant}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CREDENTIAL_MASTER_KEY_BASE64: ${CREDENTIAL_MASTER_KEY_BASE64}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      API_INTERNAL_URL: http://api:3001/api
+      WORKER_HEALTH_HOST: 127.0.0.1
+      WORKER_HEALTH_PORT: 3002
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/apps/web/.next/cache:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NODE_ENV: production
+      DEMO_MODE: "false"
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: http://api:3001/api
+      WEB_INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      REQUIRE_AUTH: "true"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - edge
+      - backend
+
+  openclaw:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: openclaw
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      FUDUO_INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+    volumes:
+      - ${OPENCLAW_STATE_VOLUME:-openclaw-data}:/home/node/.openclaw
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - backend
+
+  openclaw-admin:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: openclaw-admin
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NODE_ENV: production
+      OPENCLAW_ADMIN_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_GATEWAY_HEALTH_URL: http://openclaw:18789/readyz
+    volumes:
+      - ${OPENCLAW_STATE_VOLUME:-openclaw-data}:/home/node/.openclaw
+    depends_on:
+      openclaw:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18790/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  openclaw-backup:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: openclaw-state-backup
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      OPENCLAW_STATE_DIR: /state
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ${OPENCLAW_STATE_VOLUME:-openclaw-data}:/state:ro
+      - openclaw-backups:/backups
+    depends_on:
+      openclaw:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/openclaw-state-backup", "--check"]
+      interval: 1h
+      timeout: 10s
+      retries: 2
+      start_period: 10m
+    networks:
+      - backend
+
+  openclaw-state-restore:
+    profiles: ["recovery"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: openclaw-state-restore
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      OPENCLAW_RESTORE_TARGET: /restore
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+    volumes:
+      - openclaw-backups:/backups:ro
+      - openclaw-restore-data:/restore
+    networks:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - edge
+
+networks:
+  edge:
+  backend:
+
+volumes:
+  postgres-data:
+  postgres-backups:
+  redis-data:
+  openclaw-data:
+  openclaw-backups:
+  openclaw-restore-data:
+  caddy-data:
+  caddy-config:

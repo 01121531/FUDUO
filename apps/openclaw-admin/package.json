@@ -1,0 +1,22 @@
+{
+  "name": "@fuduo/openclaw-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --conditions=production dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src"
+  },
+  "dependencies": {
+    "@fuduo/shared": "workspace:*",
+    "@tencent-weixin/openclaw-weixin": "2.4.6",
+    "openclaw": "2026.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "5.9.3",
+    "vitest": "latest"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "ok",
+  "data": {
+    "records": [
+      {
+        "id": 10001,
+        "accountId": 20001,
+        "shopName": "Fixture Shop A",
+        "name": "Fixture Shop A",
+        "platformCode": "pinduoduo",
+        "loginStatus": "NORMAL",
+        "merchantId": "fixture-merchant-001"
+      },
+      {
+        "id": 10002,
+        "accountId": null,
+        "shopName": "Fixture Shop B",
+        "platformCode": "pinduoduo",
+        "loginStatus": 0
+      }
+    ],
+    "total": 2,
+    "pages": 1,
+    "current": 1,
+    "size": 100
+  },
+  "traceId": "fixture-trace-visible-shops"
+}
