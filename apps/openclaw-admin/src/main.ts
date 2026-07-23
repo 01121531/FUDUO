@@ -4,6 +4,7 @@ import { WeixinSender } from "./weixin-sender.js";
 import { validateOpenClawAdminEnvironment } from "@fuduo/shared/environment";
 import { WechatLoginManager } from "./wechat-login-manager.js";
 import { createReadinessCheck } from "./readiness.js";
+import { ExtensionInstaller } from "./extension-installer.js";
 
 validateOpenClawAdminEnvironment();
 
@@ -17,6 +18,7 @@ const readiness = createReadinessCheck({
   stateDir: process.env.OPENCLAW_STATE_DIR!,
   gatewayHealthUrl: process.env.OPENCLAW_GATEWAY_HEALTH_URL ?? "http://openclaw:18789/readyz",
 });
+const extensions = new ExtensionInstaller(process.env.OPENCLAW_STATE_DIR!);
 const server = createOpenClawAdminServer({
   list: () => manager.list(),
   approve: (code) => manager.approve(code),
@@ -26,6 +28,7 @@ const server = createOpenClawAdminServer({
   loginStart: (accountId) => login.start(accountId),
   loginCancel: () => login.cancel(),
   loginVerify: (code) => login.submitVerificationCode(code),
+  installExtension: (bundle) => extensions.install(bundle),
 }, token, readiness);
 
 const port = Number(process.env.OPENCLAW_ADMIN_PORT ?? 18790);

@@ -5,6 +5,14 @@ export interface OpenClawPairingState {
   approved: string[];
 }
 
+export interface ExtensionInstallBundle {
+  kind: "SKILL" | "MCP";
+  slug: string;
+  version: number;
+  manifest: Record<string, unknown>;
+  files: Array<{ path: string; content: string }>;
+}
+
 @Injectable()
 export class OpenClawAdminService {
   private readonly client: OpenClawAdminClient | null;
@@ -24,6 +32,7 @@ export class OpenClawAdminService {
   loginStart(accountId?: string) { return this.requireClient().loginStart(accountId); }
   loginCancel() { return this.requireClient().loginCancel(); }
   loginVerify(code: string) { return this.requireClient().loginVerify(code); }
+  installExtension(bundle: ExtensionInstallBundle) { return this.requireClient().installExtension(bundle); }
 
   private requireClient() {
     if (!this.client) throw new Error("OPENCLAW_ADMIN_NOT_CONFIGURED");
@@ -54,8 +63,9 @@ export class OpenClawAdminClient {
   loginStart(accountId?: string) { return this.request<WechatLoginState>("/login/start", "POST", accountId ? { accountId } : undefined, 45_000); }
   loginCancel() { return this.request<WechatLoginState>("/login/cancel", "POST"); }
   loginVerify(code: string) { return this.request<WechatLoginState>("/login/verify", "POST", { code }); }
+  installExtension(bundle: ExtensionInstallBundle) { return this.request<{ installed: boolean; path: string; restartRequired: boolean }>("/extensions/install", "POST", bundle, 50_000); }
 
-  private async request<T>(path: string, method: "GET" | "POST", body?: Record<string, string>, timeoutMs = 5_000): Promise<T> {
+  private async request<T>(path: string, method: "GET" | "POST", body?: unknown, timeoutMs = 5_000): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {

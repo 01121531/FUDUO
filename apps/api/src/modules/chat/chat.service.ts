@@ -7,6 +7,7 @@ import { BusinessToolService } from "../tools/business-tool.service.js";
 import { ModelProviderService } from "../models/model-provider.service.js";
 import { DatabaseService } from "../database/database.service.js";
 import { planChatTurn } from "./chat-planner.js";
+import { ExtensionService } from "../extensions/extension.service.js";
 
 type TurnStatus = "RECEIVED" | "AUTHORIZED" | "PLANNING" | "TOOL_RUNNING" | "COMPOSING" | "COMPLETED" | "FAILED" | "CANCELLED";
 interface TurnRecord {
@@ -66,6 +67,7 @@ export class ChatService {
     @Inject(BusinessToolService) private readonly tools: BusinessToolService,
     @Inject(ModelProviderService) private readonly models: ModelProviderService,
     @Inject(DatabaseService) private readonly database: DatabaseService,
+    @Inject(ExtensionService) private readonly extensions: ExtensionService,
   ) {}
 
   async listConversations(userId?: string) {
@@ -190,6 +192,26 @@ export class ChatService {
       this.emitStatus(turn, "AUTHORIZED");
       this.emitStatus(turn, "PLANNING");
       const started = Date.now();
+      if (isExtensionCreationIntent(turn.message)) {
+        const draft = await this.extensions.createDraft(turn.message, turn.userId, undefined, turn.abortController.signal);
+        if (turn.terminal) return;
+        this.emitStatus(turn, "COMPOSING", { toolName: "create_extension_draft" });
+        const content = `已生成 ${draft.kind === "MCP" ? "MCP" : "Skill"} 草案“${draft.name}”（${draft.slug}@${draft.version}）。静态校验：${draft.validation.errors.length ? `${draft.validation.errors.length} 个错误` : "通过"}，${draft.validation.warnings.length} 个复核项。草案不会自动执行，请到“扩展工厂”预览文件和权限后由管理员确认安装。`;
+        const message = await this.commitAssistantMessage(turn, () => this.saveAssistantMessage(
+          turn,
+          content,
+          "ai-extension-builder",
+          "create_extension_draft",
+          { kind: draft.kind, slug: draft.slug, version: draft.version },
+          Date.now() - started,
+          null,
+          null,
+        ));
+        if (!message || turn.terminal) return;
+        this.streamContent(turn, content);
+        await this.finish(turn, "COMPLETED", { message, extensionDraftId: draft.id });
+        return;
+      }
       const catalogRun = await this.tools.invokeTracked("list_shops", {}, { userId: turn.userId });
       const catalog = catalogRun.result as { shops?: Array<{ id?: string | number; name?: string }> };
       const visibleShops = (catalog.shops ?? [])
@@ -624,6 +646,12 @@ function redactToolJson(value: unknown, depth = 0): unknown {
 function normalizeTitle(value: string) {
   const title = value.replace(/\s+/g, " ").trim();
   return title ? title.slice(0, 36) : "新对话";
+}
+
+export function isExtensionCreationIntent(message: string) {
+  const hasExtension = /\b(?:mcp|skill)\b|技能|扩展/i.test(message);
+  const hasCreation = /创建|生成|制作|新增|开发|create|build|generate/i.test(message);
+  return hasExtension && hasCreation;
 }
 
 function boundedCompleteHistory(history: ModelConversationMessage[]) {

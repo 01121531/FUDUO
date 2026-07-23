@@ -64,6 +64,33 @@ API、Worker、Web、OpenClaw 和 OpenClaw Admin 镜像均使用非 root `node` 
 
 OpenClaw 的模型固定指向 API 内部的 `fuduo-runtime/default`。API 会在每次微信请求时读取后台当前的默认和备用模型，因此切换模型后下一次请求即生效；模型供应商 API Key 只保存在加密数据库字段中，不复制到 OpenClaw 配置或共享卷。
 
+## AI 扩展工厂
+
+在 Web 对话中输入“创建一个 Skill……”或“生成一个 MCP……”，系统会调用后台模型生成扩展草案。也可以在“设置 → 扩展工厂”中明确选择 Skill 或 MCP 后填写需求。AI 只生成待审批草案，不会直接执行或安装代码。
+
+草案会保存版本、文件包、工具定义和网络、环境变量、文件系统权限清单，并经过路径穿越、包体积、嵌入凭据、动态代码执行、子进程和破坏性文件操作检查。只有管理员可以确认安装或拒绝草案：
+
+- Skill 安装到 OpenClaw workspace 的 `skills/<slug>`；
+- MCP 安装到 `mcp/<slug>`，随后执行 `openclaw mcp set` 和 `openclaw mcp probe`；
+- MCP 探测失败会撤销注册、恢复上一版本文件与注册，不会标记为已安装；
+- 每个已审批版本归档到 OpenClaw 状态卷，并记录安装审计日志。
+
+生产环境必须先配置模型管理中的分析模型，并保证 `openclaw-admin` 与 OpenClaw 共享状态卷。普通员工可以创建和查看自己的草案，只有带 `extensions:manage` 或 `*` 权限的管理员可以安装或拒绝。
+
+## 在线更新
+
+“设置 → 在线更新”会检查 GitHub 最新 Release 并显示当前版本、最新版本及适用命令。更新动作在宿主机执行，API 容器不挂载 Docker Socket。
+
+Linux Docker 部署：
+
+```bash
+./deploy/update.sh --mode docker
+./deploy/update.sh --mode docker --version v0.2.0
+./deploy/update.sh --mode docker --rollback v0.1.0
+```
+
+Windows Docker 部署使用 `.\deploy\update.ps1 -Mode docker`。源码部署把 `docker` 改为 `source`；源码模式要求工作区无本地改动，并在目标服务器具备 Git、Node.js 和 pnpm。Release 工作流会构建并推送带版本标签的 GHCR 镜像，同时附加更新器压缩包和 SHA256 文件。
+
 生产探针使用 `/api/health/live` 检查进程、使用 `/api/health/ready` 检查 PostgreSQL 与 Redis。Prometheus 文本指标位于 `/api/metrics`，生产环境必须使用 `Authorization: Bearer <INTERNAL_SERVICE_TOKEN>` 或 `X-Internal-Service-Token` 访问；指标不记录请求正文、Cookie、Authorization 或对话内容。
 
 同步 Worker 在容器内的 `127.0.0.1:3002` 提供 `/health/live` 和 `/health/ready`。就绪探针同时检查 BullMQ Worker、PostgreSQL 和 Redis，任一不可用即返回 503；该端口不发布到宿主机或公网，仅供 Docker 健康检查使用。

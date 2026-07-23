@@ -16,6 +16,7 @@ beforeEach(() => {
     loginStart: vi.fn(async (accountId?: string) => ({ status: "PENDING", accountId: accountId ?? null, qrDataUrl: "https://weixin.qq.com/qr" })),
     loginCancel: vi.fn(() => ({ status: "CANCELLED" })),
     loginVerify: vi.fn((code: string) => ({ status: "SCANNED", codeAccepted: code.length > 0 })),
+    installExtension: vi.fn(async (bundle) => ({ installed: true, slug: bundle.slug })),
   };
 });
 
@@ -58,10 +59,12 @@ describe("OpenClaw admin HTTP server", () => {
     expect((await fetch(`${baseUrl}/pairings/approve`, { method: "POST", headers, body: JSON.stringify({ code: "ABCDEFGH" }) })).status).toBe(200);
     expect((await fetch(`${baseUrl}/pairings/revoke`, { method: "POST", headers, body: JSON.stringify({ externalUserId: "wechat-user-1" }) })).status).toBe(200);
     expect((await fetch(`${baseUrl}/messages/send`, { method: "POST", headers, body: JSON.stringify({ externalUserId: "wechat-user-1@im.wechat", text: "日报" }) })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/extensions/install`, { method: "POST", headers, body: JSON.stringify({ kind: "SKILL", slug: "weekly-review", version: 1, manifest: {}, files: [{ path: "SKILL.md", content: "# Review" }] }) })).status).toBe(200);
     expect(manager.list).toHaveBeenCalledOnce();
     expect(manager.approve).toHaveBeenCalledWith("ABCDEFGH");
     expect(manager.revoke).toHaveBeenCalledWith("wechat-user-1");
     expect(manager.send).toHaveBeenCalledWith("wechat-user-1@im.wechat", "日报", undefined);
+    expect(manager.installExtension).toHaveBeenCalledWith(expect.objectContaining({ slug: "weekly-review" }));
   });
 
   it("routes authenticated WeChat account login lifecycle requests", async () => {

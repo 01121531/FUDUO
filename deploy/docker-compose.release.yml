@@ -1,0 +1,21 @@
+services:
+  migrate:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-worker:${FUDUO_IMAGE_TAG:-latest}
+  backup:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-postgres-backup:${FUDUO_IMAGE_TAG:-latest}
+  postgres-restore:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-postgres-restore:${FUDUO_IMAGE_TAG:-latest}
+  api:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-api:${FUDUO_IMAGE_TAG:-latest}
+  worker:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-worker:${FUDUO_IMAGE_TAG:-latest}
+  web:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-web:${FUDUO_IMAGE_TAG:-latest}
+  openclaw:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-openclaw:${FUDUO_IMAGE_TAG:-latest}
+  openclaw-admin:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-openclaw-admin:${FUDUO_IMAGE_TAG:-latest}
+  openclaw-backup:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-openclaw-state-backup:${FUDUO_IMAGE_TAG:-latest}
+  openclaw-state-restore:
+    image: ${FUDUO_IMAGE_REPOSITORY:-ghcr.io/01121531}/fuduo-openclaw-state-restore:${FUDUO_IMAGE_TAG:-latest}

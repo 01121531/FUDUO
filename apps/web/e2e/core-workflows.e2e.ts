@@ -101,3 +101,24 @@ test("chat answers a business question with a data cutoff", async ({ page }) => 
   await expect(answer).toBeVisible({ timeout: 20_000 });
   await expect(answer).toContainText(/销售额|店铺/);
 });
+
+test("extension factory creates, reviews, and installs an MCP draft", async ({ page }) => {
+  await page.goto("/settings/extensions", { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+
+  await page.getByRole("button", { name: "MCP", exact: true }).click();
+  await page.getByPlaceholder(/创建一个 MCP 工具/).fill("创建一个 MCP 工具，用于标准化订单查询参数");
+  await page.getByRole("button", { name: "生成草案" }).click();
+
+  await expect(page.getByText(/草案已生成，等待复核/)).toBeVisible();
+  const draft = page.locator("details.extension-item").first();
+  await expect(draft).toContainText("MCP");
+  await expect(draft).toContainText("校验通过");
+  await draft.locator(":scope > summary").click();
+  await expect(draft.getByText("权限清单", { exact: true })).toBeVisible();
+  await expect(draft.getByText("server.mjs", { exact: true })).toBeVisible();
+
+  await draft.getByRole("button", { name: "确认安装" }).click();
+  await expect(page.getByText("扩展已安装", { exact: true })).toBeVisible();
+  await expect(draft).toContainText("已安装");
+});

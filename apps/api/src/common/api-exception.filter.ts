@@ -69,15 +69,7 @@ function normalize(exception: unknown) {
     };
   }
   if (exception instanceof Error && /^[A-Z][A-Z0-9_]+$/.test(exception.message)) {
-    const status = exception.message === "MODEL_PROXY_REQUEST_TOO_LARGE"
-      ? 413
-      : exception.message === "MODEL_UPSTREAM_UNAVAILABLE" || exception.message === "MODEL_PROFILE_NOT_CONFIGURED"
-        ? 503
-        : exception.message.includes("NOT_FOUND")
-          ? 404
-          : exception.message.includes("REAUTH")
-            ? 401
-            : 400;
+    const status = errorStatus(exception.message);
     return {
       status,
       code: exception.message,
@@ -142,6 +134,39 @@ function userMessage(code: string) {
     MEMBER_UPDATE_EMPTY: "没有需要更新的员工资料",
     CHANNEL_USER_ID_REQUIRED: "微信调用缺少可信发送者身份",
     CHANNEL_USER_NOT_PAIRED: "微信账号尚未批准或已被撤销",
+    EXTENSION_NOT_FOUND: "扩展草案不存在",
+    EXTENSION_VALIDATION_FAILED: "扩展草案未通过静态校验",
+    EXTENSION_REJECTED: "已拒绝的扩展草案不能安装",
+    EXTENSION_INSTALLED: "已安装的扩展不能标记为拒绝",
+    EXTENSION_FILES_INVALID: "扩展文件包格式无效",
+    EXTENSION_BUNDLE_INVALID: "扩展安装包格式无效",
+    EXTENSION_BUNDLE_TOO_LARGE: "扩展安装包超过大小限制",
+    EXTENSION_PATH_INVALID: "扩展文件路径无效",
+    EXTENSION_MCP_ENTRYPOINT_INVALID: "MCP 启动文件无效",
+    EXTENSION_MCP_PROBE_FAILED: "MCP 启动探测失败，未执行安装",
+    OPENCLAW_ADMIN_NOT_CONFIGURED: "OpenClaw 管理服务尚未配置",
+    OPENCLAW_ADMIN_REQUEST_FAILED: "OpenClaw 管理服务暂不可用",
+    UPDATE_REPOSITORY_INVALID: "在线更新仓库配置无效",
+    UPDATE_CHECK_FAILED: "暂时无法获取 GitHub 最新版本",
+    UPDATE_RELEASE_INVALID: "GitHub Release 信息格式无效",
   };
   return messages[code] ?? "请求无法完成";
+}
+
+function errorStatus(code: string) {
+  if (code === "AUTH_REQUIRED" || code.includes("REAUTH")) return 401;
+  if (code === "MODEL_PROXY_REQUEST_TOO_LARGE" || code === "EXTENSION_BUNDLE_TOO_LARGE") return 413;
+  if (code.includes("NOT_FOUND")) return 404;
+  if (code === "EXTENSION_REJECTED" || code === "EXTENSION_INSTALLED") return 409;
+  if ([
+    "MODEL_UPSTREAM_UNAVAILABLE",
+    "MODEL_PROFILE_NOT_CONFIGURED",
+    "OPENCLAW_ADMIN_NOT_CONFIGURED",
+    "OPENCLAW_ADMIN_REQUEST_FAILED",
+    "EXTENSION_MCP_PROBE_FAILED",
+    "UPDATE_CHECK_FAILED",
+  ].includes(code)) return 503;
+  if (code === "UPDATE_RELEASE_INVALID") return 502;
+  if (code === "UPDATE_REPOSITORY_INVALID") return 500;
+  return 400;
 }

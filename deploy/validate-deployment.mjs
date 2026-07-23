@@ -267,9 +267,10 @@ const requiredFuduoTools = [
 ];
 const toolAllow = parseShellJsonSetting(openclawEntrypoint, "tools.allow");
 const toolDeny = parseShellJsonSetting(openclawEntrypoint, "tools.deny");
-if (JSON.stringify(toolAllow) !== JSON.stringify(requiredFuduoTools))
+const requiredAllowedTools = [...requiredFuduoTools, "*__*"];
+if (JSON.stringify(toolAllow) !== JSON.stringify(requiredAllowedTools))
   issues.push(
-    "OpenClaw tools.allow must contain only the fixed Fuduo tool contract",
+    "OpenClaw tools.allow must contain only the fixed Fuduo tool contract and approved MCP tool pattern",
   );
 for (const denied of [
   "group:openclaw",

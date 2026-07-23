@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { MessageEvent } from "@nestjs/common";
 import type { Observable } from "rxjs";
-import { ChatService } from "./chat.service.js";
+import { ChatService, isExtensionCreationIntent } from "./chat.service.js";
 
 function createService() {
   const tools = {
@@ -29,8 +29,9 @@ function createService() {
     complete: vi.fn(async (..._args: unknown[]): Promise<{ content: string; model: string } | null> => null),
   };
   const database = { enabled: false };
+  const extensions = { createDraft: vi.fn() };
   return {
-    service: new ChatService(tools as never, models as never, database as never),
+    service: new ChatService(tools as never, models as never, database as never, extensions as never),
     tools,
     models,
   };
@@ -44,6 +45,11 @@ function collect(observable: Observable<MessageEvent>) {
 }
 
 describe("ChatService", () => {
+  it("recognizes explicit conversational Skill and MCP creation requests", () => {
+    expect(isExtensionCreationIntent("帮我创建一个每周复盘 Skill")).toBe(true);
+    expect(isExtensionCreationIntent("build an MCP for order lookup")).toBe(true);
+    expect(isExtensionCreationIntent("查询今天的销售额")).toBe(false);
+  });
   it("streams a complete turn and stores conversation history", async () => {
     const { service, tools, models } = createService();
     const turn = await service.start("今天所有店铺销售额是多少？");
@@ -255,7 +261,7 @@ describe("ChatService", () => {
         },
       },
     };
-    const service = new ChatService({} as never, {} as never, database as never);
+    const service = new ChatService({} as never, {} as never, database as never, {} as never);
     const run = vi.fn((turn: { id: string; history: unknown[]; events: { next: (event: MessageEvent) => void; complete: () => void } }) => {
       turn.events.next({ type: "completed", data: { turnId: turn.id, status: "COMPLETED" } });
       turn.events.complete();
@@ -306,7 +312,7 @@ describe("ChatService", () => {
         },
       },
     };
-    const service = new ChatService({} as never, {} as never, database as never);
+    const service = new ChatService({} as never, {} as never, database as never, {} as never);
 
     const events = await collect(await service.events(
       "11111111-1111-4111-8111-111111111111",

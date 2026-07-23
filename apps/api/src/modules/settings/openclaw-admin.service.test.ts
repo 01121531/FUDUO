@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { OpenClawAdminClient } from "./openclaw-admin.service.js";
 
 describe("OpenClawAdminClient", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("authenticates pairing requests without putting the token in the URL", async () => {
     const token = "x".repeat(48);
     const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -52,5 +54,23 @@ describe("OpenClawAdminClient", () => {
     });
     const client = new OpenClawAdminClient("http://openclaw-admin:18790", token, fetchImpl as typeof fetch);
     await expect(client.loginVerify("123456")).resolves.toMatchObject({ status: "SCANNED" });
+  });
+
+  it("allows enough time for MCP registration and probe", async () => {
+    vi.useFakeTimers();
+    let requestSignal: AbortSignal | undefined;
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestSignal = init?.signal ?? undefined;
+      return await new Promise<Response>((_resolve, reject) => requestSignal?.addEventListener("abort", () => reject(requestSignal?.reason)));
+    });
+    const client = new OpenClawAdminClient("http://openclaw-admin:18790", "x".repeat(48), fetchImpl as typeof fetch);
+    const request = client.installExtension({ kind: "MCP", slug: "order-helper", version: 1, manifest: {}, files: [{ path: "server.mjs", content: "" }] });
+    const rejection = expect(request).rejects.toThrow();
+
+    await vi.advanceTimersByTimeAsync(35_000);
+    expect(requestSignal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await rejection;
+    expect(requestSignal?.aborted).toBe(true);
   });
 });

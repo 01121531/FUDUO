@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { ExtensionInstallBundle } from "./extension-installer.js";
 
 export interface OpenClawAdmin {
   list(): Promise<unknown>;
@@ -10,6 +11,7 @@ export interface OpenClawAdmin {
   loginStart(accountId?: string): Promise<unknown>;
   loginCancel(): Promise<unknown> | unknown;
   loginVerify(code: string): Promise<unknown> | unknown;
+  installExtension(bundle: ExtensionInstallBundle): Promise<unknown>;
 }
 
 export function createOpenClawAdminServer(manager: OpenClawAdmin, token: string, readiness: () => Promise<boolean> = async () => true) {
@@ -48,6 +50,10 @@ export function createOpenClawAdminServer(manager: OpenClawAdmin, token: string,
         const body = await readJson(request);
         return send(response, 200, await manager.send(stringField(body, "externalUserId"), stringField(body, "text"), optionalUuidField(body, "idempotencyKey")));
       }
+      if (request.method === "POST" && request.url === "/extensions/install") {
+        const body = await readJson(request, false, 96 * 1024);
+        return send(response, 200, await manager.installExtension(body as unknown as ExtensionInstallBundle));
+      }
       return send(response, 404, { error: { code: "NOT_FOUND", message: "接口不存在" } });
     } catch (error) {
       const code = error instanceof Error && /^[A-Z][A-Z0-9_]+$/.test(error.message) ? error.message : "SYSTEM_INTERNAL";
@@ -64,13 +70,13 @@ function authorized(request: IncomingMessage, expected: string) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-async function readJson(request: IncomingMessage, allowEmpty = false): Promise<Record<string, unknown>> {
+async function readJson(request: IncomingMessage, allowEmpty = false, maximumSize = 16_384): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
     const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += value.length;
-    if (size > 16_384) throw new Error("REQUEST_TOO_LARGE");
+    if (size > maximumSize) throw new Error("REQUEST_TOO_LARGE");
     chunks.push(value);
   }
   try {
@@ -107,9 +113,9 @@ function optionalUuidField(body: Record<string, unknown>, key: string) {
 
 function errorStatus(code: string) {
   if (code === "PAIRING_CODE_NOT_FOUND") return 404;
-  if (code === "REQUEST_TOO_LARGE") return 413;
-  if (code === "REQUEST_INVALID" || code.startsWith("PAIRING_") || code.startsWith("WECHAT_VERIFY_CODE_")) return 400;
-  if (code === "OPENCLAW_NOT_CONFIGURED" || code === "WECHAT_LOGIN_QR_UNAVAILABLE") return 503;
+  if (code === "REQUEST_TOO_LARGE" || code === "EXTENSION_BUNDLE_TOO_LARGE") return 413;
+  if (code === "REQUEST_INVALID" || code.startsWith("PAIRING_") || code.startsWith("WECHAT_VERIFY_CODE_") || code === "EXTENSION_BUNDLE_INVALID" || code === "EXTENSION_PATH_INVALID" || code === "EXTENSION_MCP_ENTRYPOINT_INVALID") return 400;
+  if (code === "OPENCLAW_NOT_CONFIGURED" || code === "WECHAT_LOGIN_QR_UNAVAILABLE" || code === "EXTENSION_MCP_PROBE_FAILED") return 503;
   return 500;
 }
 
@@ -129,6 +135,11 @@ function userMessage(code: string) {
     WECHAT_LOGIN_QR_UNAVAILABLE: "暂时无法生成微信登录二维码",
     WECHAT_VERIFY_CODE_INVALID: "验证码格式无效",
     WECHAT_VERIFY_CODE_NOT_REQUIRED: "当前登录不需要验证码",
+    EXTENSION_BUNDLE_INVALID: "扩展安装包格式无效",
+    EXTENSION_BUNDLE_TOO_LARGE: "扩展安装包超过大小限制",
+    EXTENSION_PATH_INVALID: "扩展文件路径无效",
+    EXTENSION_MCP_ENTRYPOINT_INVALID: "MCP 启动文件无效",
+    EXTENSION_MCP_PROBE_FAILED: "MCP 启动探测失败，已撤销注册",
   };
   return messages[code] ?? "服务处理请求时发生错误";
 }

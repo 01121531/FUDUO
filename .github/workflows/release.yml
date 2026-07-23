@@ -62,6 +62,8 @@ jobs:
           target: ${{ matrix.target }}
           platforms: linux/amd64
           push: true
+          build-args: |
+            FUDUO_VERSION=${{ github.ref_name }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
@@ -80,16 +82,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Package updater assets
+        run: |
+          chmod +x deploy/update.sh
+          tar -czf "fuduo-updater-${GITHUB_REF_NAME}.tar.gz" \
+            deploy/docker-compose.yml \
+            deploy/docker-compose.release.yml \
+            deploy/update.sh \
+            deploy/update.ps1 \
+            deploy/.env.example
+          sha256sum "fuduo-updater-${GITHUB_REF_NAME}.tar.gz" > "fuduo-updater-${GITHUB_REF_NAME}.sha256"
+
       - name: Create release
         shell: bash
         run: |
           cat > release-notes.md <<'EOF'
-          FUDUO 云端经营数据与 AI 对话平台初始版本。
+          FUDUO 云端经营数据与 AI 对话平台发布版本。
 
           功能包括：
           - Dashboard、店铺、报表和同步中心
           - 富多授权、销售数据同步与经营分析
           - 微信 OpenClaw 接入和模型供应商管理
+          - 对话生成、校验并审批安装 Skill 与 MCP 扩展
+          - GitHub Release 在线更新与失败回滚脚本
           - 响应式工作台、可折叠侧栏及无障碍交互
 
           本次发布由 GitHub 托管服务器从当前标签构建并推送 9 个 GHCR 镜像。每个镜像均提供当前版本标签和 `latest` 标签，并包含构建来源证明与 SBOM。
@@ -99,4 +114,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "FUDUO $GITHUB_REF_NAME" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md \
+            "fuduo-updater-${GITHUB_REF_NAME}.tar.gz" \
+            "fuduo-updater-${GITHUB_REF_NAME}.sha256"

@@ -1,5 +1,7 @@
 FROM node:24.15.0-bookworm-slim AS builder
 
+ARG FUDUO_VERSION=0.1.0
+ENV FUDUO_VERSION=$FUDUO_VERSION
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable

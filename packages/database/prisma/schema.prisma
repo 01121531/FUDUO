@@ -52,6 +52,7 @@ model User {
   sessions           UserSession[]
   loginSessions      LoginSession[]
   totpEnrollment     TotpEnrollment?
+  aiExtensions       AiExtension[]
 }
 
 model TotpEnrollment {
@@ -495,6 +496,28 @@ model InboundToolInvocation {
   @@unique([channel, accountId, externalMessageId, operationKey])
   @@index([status, leaseExpiresAt])
   @@index([createdAt])
+}
+
+model AiExtension {
+  id           String    @id @default(uuid()) @db.Uuid
+  ownerId      String    @db.Uuid
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  kind         String
+  name         String
+  slug         String
+  description  String
+  status       String    @default("DRAFT")
+  version      Int       @default(1)
+  manifest     Json
+  files        Json
+  validation   Json
+  installedAt  DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([slug, version])
+  @@index([ownerId, createdAt])
+  @@index([status, updatedAt])
 }
 
 model AuditLog {

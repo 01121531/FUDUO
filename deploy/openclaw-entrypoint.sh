@@ -15,7 +15,7 @@ $OPENCLAW config set plugins.entries.fuduo-business.config.serviceToken \
 # filesystem, runtime, browser, network and agent tool outside its policy.
 $OPENCLAW config set tools.profile full
 $OPENCLAW config set tools.allow \
-  '["list_shops","get_shop_sales","compare_shop_sales","rank_shops_by_sales","get_sales_summary","get_shop_orders","get_shop_refunds","generate_daily_report","generate_weekly_report","get_data_freshness","get_sync_status"]' \
+  '["list_shops","get_shop_sales","compare_shop_sales","rank_shops_by_sales","get_sales_summary","get_shop_orders","get_shop_refunds","generate_daily_report","generate_weekly_report","get_data_freshness","get_sync_status","*__*"]' \
   --strict-json
 $OPENCLAW config set tools.deny \
   '["group:openclaw","group:fs","group:runtime","canvas"]' \

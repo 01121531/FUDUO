@@ -3,16 +3,16 @@ import { AlertTriangle, CheckCircle2, Clock3, HelpCircle, Info, LoaderCircle } f
 export function StatusBadge({ status }: { status: string }) {
   const normalized = status.toUpperCase();
   const label = STATUS_LABELS[normalized] ?? status;
-  if (["正常", "SUCCEEDED", "ACTIVE", "LIVE", "PAIRED", "已推送"].includes(normalized) || ["正常", "已推送"].includes(status)) {
+  if (["正常", "SUCCEEDED", "ACTIVE", "LIVE", "PAIRED", "INSTALLED", "VALIDATED", "已推送"].includes(normalized) || ["正常", "已推送"].includes(status)) {
     return <span className="status success"><CheckCircle2 size={13} />{label}</span>;
   }
   if (["RUNNING", "QUEUED", "REFRESHING", "SENDING", "RETRY_WAIT"].includes(normalized) || status === "推送中") {
     return <span className="status info"><LoaderCircle className="spin" size={13} />{label}</span>;
   }
-  if (["FAILED", "REAUTH_REQUIRED"].includes(normalized) || ["失败", "推送失败"].includes(status)) {
+  if (["FAILED", "REAUTH_REQUIRED", "REJECTED"].includes(normalized) || ["失败", "推送失败"].includes(status)) {
     return <span className="status danger"><AlertTriangle size={13} />{label}</span>;
   }
-  if (["PARTIAL", "STALE", "PENDING", "UNBOUND", "NEEDS_REVIEW"].includes(normalized) || ["待重新登录", "待测试"].includes(status)) {
+  if (["PARTIAL", "STALE", "PENDING", "UNBOUND", "NEEDS_REVIEW", "DRAFT"].includes(normalized) || ["待重新登录", "待测试"].includes(status)) {
     return <span className="status warning"><Clock3 size={13} />{label}</span>;
   }
   if (normalized === "UNKNOWN") {
@@ -41,4 +41,8 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: "待审批",
   UNBOUND: "未绑定员工",
   NEEDS_REVIEW: "需核对",
+  DRAFT: "草案",
+  VALIDATED: "校验通过",
+  INSTALLED: "已安装",
+  REJECTED: "已拒绝",
 };

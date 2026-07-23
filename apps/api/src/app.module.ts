@@ -42,6 +42,10 @@ import { MemberService } from "./modules/settings/member.service.js";
 import { RateLimitGuard } from "./modules/rate-limit/rate-limit.guard.js";
 import { RateLimitService } from "./modules/rate-limit/rate-limit.service.js";
 import { AuditInterceptor } from "./modules/audit/audit.interceptor.js";
+import { ExtensionController } from "./modules/extensions/extension.controller.js";
+import { ExtensionService } from "./modules/extensions/extension.service.js";
+import { UpdateController } from "./modules/updates/update.controller.js";
+import { UpdateService } from "./modules/updates/update.service.js";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true })],
@@ -64,7 +68,9 @@ import { AuditInterceptor } from "./modules/audit/audit.interceptor.js";
     CredentialUploadController,
     CredentialAlertController,
     MemberController,
+    ExtensionController,
+    UpdateController,
   ],
-  providers: [DatabaseService, MetricsService, AccessControlService, MemberService, DemoDataService, BusinessDataService, BusinessToolService, ToolInvocationDeduplicator, ChatService, InternalServiceGuard, ModelProviderService, OpenClawAdminService, ReportDeliveryService, AuthService, CredentialService, CredentialAlertService, CaptureUploadGuard, QrSessionService, SyncQueueService, RateLimitService, { provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_GUARD, useClass: RateLimitGuard }, { provide: APP_INTERCEPTOR, useClass: AuditInterceptor }],
+  providers: [DatabaseService, MetricsService, AccessControlService, MemberService, DemoDataService, BusinessDataService, BusinessToolService, ToolInvocationDeduplicator, ChatService, ExtensionService, UpdateService, InternalServiceGuard, ModelProviderService, OpenClawAdminService, ReportDeliveryService, AuthService, CredentialService, CredentialAlertService, CaptureUploadGuard, QrSessionService, SyncQueueService, RateLimitService, { provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_GUARD, useClass: RateLimitGuard }, { provide: APP_INTERCEPTOR, useClass: AuditInterceptor }],
 })
 export class AppModule {}

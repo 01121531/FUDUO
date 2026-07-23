@@ -4,6 +4,7 @@ node_modules
 **/dist
 **/.turbo
 .runtime
+.updates
 .artifacts
 artifacts
 .git

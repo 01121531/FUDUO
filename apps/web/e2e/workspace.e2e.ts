@@ -12,6 +12,8 @@ const routes = [
   "/sync",
   "/settings/erp",
   "/settings/models",
+  "/settings/extensions",
+  "/settings/update",
   "/settings/wechat",
   "/settings/members",
   "/settings/security",

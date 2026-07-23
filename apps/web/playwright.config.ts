@@ -22,7 +22,7 @@ export default defineConfig({
       cwd: "../..",
       url: "http://127.0.0.1:3001/api/health/live",
       timeout: 180_000,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       env: {
         ...process.env,
         API_HOST: "127.0.0.1",
@@ -37,7 +37,7 @@ export default defineConfig({
       cwd: "../..",
       url: "http://127.0.0.1:3100/dashboard",
       timeout: 180_000,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       env: {
         ...process.env,
         DEMO_MODE: "true",
