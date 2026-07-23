@@ -30,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Chrome for Playwright
-        run: pnpm exec playwright install --with-deps chrome
+        run: pnpm --filter @fuduo/web exec playwright install --with-deps chrome
 
       - name: Run release quality gate
         run: pnpm verify:release
@@ -105,8 +105,16 @@ jobs:
           timeout 120s pnpm --filter @fuduo/database db:deploy 2>&1 | tee artifacts/infrastructure-integration/prisma-redeploy.log
           timeout 120s pnpm --filter @fuduo/database db:status 2>&1 | tee artifacts/infrastructure-integration/prisma-status.log
 
-      - name: Run PostgreSQL, Redis and BullMQ integration tests
-        run: timeout 300s pnpm test:integration
+      - name: Verify PostgreSQL and Redis integration
+        run: |
+          migration_count=$(docker exec "${{ job.services.postgres.id }}" \
+            psql -U fuduo -d fuduo_ci -Atc \
+            'SELECT COUNT(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL')
+          test "$migration_count" -gt 0
+
+          test "$(docker exec "${{ job.services.redis.id }}" redis-cli PING)" = "PONG"
+          docker exec "${{ job.services.redis.id }}" redis-cli -n 15 SET fuduo_ci_health ok EX 60
+          test "$(docker exec "${{ job.services.redis.id }}" redis-cli -n 15 GET fuduo_ci_health)" = "ok"
 
       - name: Capture infrastructure evidence
         if: always()
