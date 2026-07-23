@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: Build ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - target: api
+            image: fuduo-api
+          - target: worker
+            image: fuduo-worker
+          - target: web
+            image: fuduo-web
+          - target: openclaw
+            image: fuduo-openclaw
+          - target: openclaw-admin
+            image: fuduo-openclaw-admin
+          - target: backup
+            image: fuduo-postgres-backup
+          - target: postgres-restore
+            image: fuduo-postgres-restore
+          - target: openclaw-state-backup
+            image: fuduo-openclaw-state-backup
+          - target: openclaw-state-restore
+            image: fuduo-openclaw-state-restore
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=fuduo-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=fuduo-${{ matrix.target }}
+          provenance: true
+          sbom: true
+
+  release:
+    name: Create GitHub Release
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release
+        shell: bash
+        run: |
+          cat > release-notes.md <<'EOF'
+          FUDUO 云端经营数据与 AI 对话平台初始版本。
+
+          功能包括：
+          - Dashboard、店铺、报表和同步中心
+          - 富多授权、销售数据同步与经营分析
+          - 微信 OpenClaw 接入和模型供应商管理
+          - 响应式工作台、可折叠侧栏及无障碍交互
+
+          本次发布由 GitHub 托管服务器从当前标签构建并推送 9 个 GHCR 镜像。每个镜像均提供当前版本标签和 `latest` 标签，并包含构建来源证明与 SBOM。
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "FUDUO $GITHUB_REF_NAME" \
+            --notes-file release-notes.md
