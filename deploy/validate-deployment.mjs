@@ -139,6 +139,17 @@ for (const target of [
     issues.push(`Dockerfile target ${target} must run as node`);
 }
 
+const openclawAdminTarget = dockerTarget(dockerfile, "openclaw-admin");
+if (
+  openclawAdminTarget &&
+  !openclawAdminTarget.includes(
+    'CMD ["node", "--conditions=production", "/app/apps/openclaw-admin/dist/main.js"]',
+  )
+)
+  issues.push(
+    "Dockerfile target openclaw-admin must run the built Node entrypoint directly",
+  );
+
 const postgresRestoreTarget = dockerTarget(dockerfile, "postgres-restore");
 if (!postgresRestoreTarget)
   issues.push("Dockerfile target postgres-restore is missing");
@@ -159,6 +170,10 @@ for (const name of ["openclaw", "openclaw-admin"]) {
 
 if (!compose.services.worker?.healthcheck?.test)
   issues.push("worker must declare a readiness healthcheck");
+if (compose.services.openclaw?.healthcheck?.start_period !== "5m")
+  issues.push(
+    "openclaw healthcheck must allow first-run plugin installation to complete",
+  );
 const migrateCommand = JSON.stringify(compose.services.migrate?.command ?? []);
 if (
   !migrateCommand.includes("db:deploy") ||

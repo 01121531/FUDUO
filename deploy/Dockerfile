@@ -47,7 +47,7 @@ RUN mkdir -p /home/node/.openclaw \
 ENV HOME=/home/node
 ENV OPENCLAW_STATE_DIR=/home/node/.openclaw
 USER node
-CMD ["pnpm", "--filter", "@fuduo/openclaw-admin", "start"]
+CMD ["node", "--conditions=production", "/app/apps/openclaw-admin/dist/main.js"]
 
 FROM node:24.15.0-bookworm-slim AS openclaw-state-backup
 RUN apt-get update \
