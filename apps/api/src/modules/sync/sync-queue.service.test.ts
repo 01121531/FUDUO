@@ -82,6 +82,7 @@ describe("SyncQueueService", () => {
         ...data,
       })),
     };
+    const executeRawUnsafe = vi.fn(async () => 1);
     const prisma = {
       syncRun: {
         findUnique: vi.fn(async () => ({
@@ -95,7 +96,7 @@ describe("SyncQueueService", () => {
       },
       $transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback({
         syncRun: syncRunTransaction,
-        $queryRawUnsafe: vi.fn(async () => [{ pg_advisory_xact_lock: null }]),
+        $executeRawUnsafe: executeRawUnsafe,
       })),
     };
     const retryService = new SyncQueueService({ enabled: true, prisma } as never);
@@ -105,6 +106,11 @@ describe("SyncQueueService", () => {
       id: "22222222-2222-4222-8222-222222222222",
       sourceRunId: "11111111-1111-4111-8111-111111111111",
     });
+    expect(executeRawUnsafe).toHaveBeenCalledWith(
+      "SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      "sales-live-sync",
+      expect.any(String),
+    );
     expect(syncRunTransaction.create).toHaveBeenCalledWith({ data: expect.objectContaining({ requestedBy: "operator-1" }) });
     expect(add).toHaveBeenCalledWith(
       "sales-live-sync",
@@ -135,6 +141,7 @@ describe("SyncQueueService", () => {
       status: "QUEUED",
       createdAt: new Date("2026-07-22T08:00:00.000Z"),
     };
+    const executeRawUnsafe = vi.fn(async () => 1);
     const prisma = {
       shop: { findMany: vi.fn(async () => [{ fuduoShopId: 101n }]) },
       syncRun: {
@@ -142,7 +149,7 @@ describe("SyncQueueService", () => {
       },
       $transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback({
         syncRun: { findFirst: vi.fn(async () => existing), create: vi.fn() },
-        $queryRawUnsafe: vi.fn(async () => [{ pg_advisory_xact_lock: null }]),
+        $executeRawUnsafe: executeRawUnsafe,
       })),
     };
     const dedupeService = new SyncQueueService({ enabled: true, prisma } as never);
@@ -152,6 +159,7 @@ describe("SyncQueueService", () => {
       id: existing.id,
       deduplicated: true,
     });
+    expect(executeRawUnsafe).toHaveBeenCalledOnce();
     expect(prisma.$transaction).toHaveBeenCalledOnce();
   });
 
@@ -163,6 +171,7 @@ describe("SyncQueueService", () => {
       createdAt: new Date("2026-07-23T08:00:00.000Z"),
     };
     const update = vi.fn(async () => run);
+    const executeRawUnsafe = vi.fn(async () => 1);
     const prisma = {
       syncRun: { update },
       $transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback({
@@ -170,7 +179,7 @@ describe("SyncQueueService", () => {
           findFirst: vi.fn(async () => null),
           create: vi.fn(async () => run),
         },
-        $queryRawUnsafe: vi.fn(async () => [{ pg_advisory_xact_lock: null }]),
+        $executeRawUnsafe: executeRawUnsafe,
       })),
     };
     const queueService = new SyncQueueService({ enabled: true, prisma } as never);
@@ -179,6 +188,7 @@ describe("SyncQueueService", () => {
     };
 
     await expect(queueService.enqueue("sales-live-sync", "2026-07-23", ["101"])).rejects.toThrow("REDIS_DOWN");
+    expect(executeRawUnsafe).toHaveBeenCalledOnce();
     expect(update).toHaveBeenCalledWith({
       where: { id: run.id },
       data: expect.objectContaining({ status: "QUEUED", errorCode: "SYNC_QUEUE_UNAVAILABLE", finishedAt: null }),

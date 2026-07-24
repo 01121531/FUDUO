@@ -112,7 +112,7 @@ export class SyncQueueService implements OnApplicationShutdown, OnModuleInit {
     const normalizedPayload = normalizePayload(payload);
     const payloadKey = stablePayloadKey(normalizedPayload);
     const claimed = await this.database.prisma.$transaction(async (transaction) => {
-      await transaction.$queryRawUnsafe(
+      await transaction.$executeRawUnsafe(
         "SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
         type,
         payloadKey,
