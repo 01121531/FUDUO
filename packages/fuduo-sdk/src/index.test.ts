@@ -91,7 +91,11 @@ describe("FuduoClient", () => {
       const record = String(url).includes("aftersales")
         ? { businessShopId: 10218, refundAmount: "12.34", platformOccurredAt: "2026-07-21T01:00:00Z" }
         : { businessShopId: 10218, payAmount: "88.50", orderStatus: 1, platformOccurredAt: "2026-07-21T01:00:00Z" };
-      return new Response(JSON.stringify({ success: true, data: { records: [record], total: "1", page: "1", size: "100" } }), { status: 200 });
+      return new Response(JSON.stringify({
+        success: true,
+        data: { records: [record], total: "1", page: "1", size: "100" },
+        traceId: null,
+      }), { status: 200 });
     });
     const client = new FuduoClient({ getAccessToken: () => "token", fetchImpl: fetchImpl as typeof fetch });
 

@@ -6,7 +6,7 @@ export const envelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
     code: z.string().optional(),
     message: z.string().optional(),
     data: data.optional(),
-    traceId: z.string().optional(),
+    traceId: z.string().nullish(),
   });
 
 export const qrLoginSchema = z.object({

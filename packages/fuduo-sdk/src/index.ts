@@ -186,7 +186,7 @@ export class FuduoClient {
             envelope.data.code ?? "ERP_REQUEST_FAILED",
             envelope.data.message ?? `富多接口请求失败（HTTP ${response.status}）`,
             response.status,
-            envelope.data.traceId,
+            envelope.data.traceId ?? undefined,
           );
         }
         return envelope.data.data;
