@@ -13,6 +13,12 @@ const openclawEntrypoint = readFileSync(
   path.join(deployDir, "openclaw-entrypoint.sh"),
   "utf8",
 );
+const openclawRuntimeBatch = JSON.parse(
+  readFileSync(
+    path.join(deployDir, "openclaw-model-config.batch.json"),
+    "utf8",
+  ),
+);
 const openclawBackup = readFileSync(
   path.join(deployDir, "openclaw-state-backup.sh"),
   "utf8",
@@ -36,6 +42,35 @@ const composeSource = readFileSync(
   "utf8",
 );
 const issues = [];
+
+const openclawRuntimePaths = new Map(
+  openclawRuntimeBatch.map((entry) => [entry.path, entry]),
+);
+for (const requiredPath of [
+  "plugins.load.paths",
+  "plugins.entries.fuduo-business.enabled",
+  "plugins.entries.fuduo-business.config.apiBaseUrl",
+  "plugins.entries.fuduo-business.config.serviceToken",
+  "models.providers.fuduo-runtime.baseUrl",
+]) {
+  if (!openclawRuntimePaths.has(requiredPath)) {
+    issues.push(`OpenClaw atomic runtime batch is missing ${requiredPath}`);
+  }
+}
+if (
+  !openclawEntrypoint.includes(
+    "config set --batch-file /app/deploy/openclaw-model-config.batch.json --replace",
+  )
+) {
+  issues.push("OpenClaw runtime configuration must be applied atomically");
+}
+if (
+  openclawEntrypoint.includes(
+    "config set plugins.load.paths",
+  )
+) {
+  issues.push("OpenClaw must not load the business plugin before its required configuration");
+}
 
 if (
   (composeSource.match(/\$\{POSTGRES_DATABASE:-fuduo_assistant\}/g) ?? [])

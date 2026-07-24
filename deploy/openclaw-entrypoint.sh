@@ -3,13 +3,10 @@ set -eu
 
 OPENCLAW="pnpm --filter @fuduo/openclaw-fuduo exec openclaw"
 
-$OPENCLAW config set plugins.load.paths '["/app/plugins/openclaw-fuduo"]' --strict-json
-$OPENCLAW config set plugins.entries.fuduo-business.enabled true
-$OPENCLAW config set plugins.entries.fuduo-business.config.apiBaseUrl http://api:3001/api
-$OPENCLAW config set plugins.entries.fuduo-business.config.serviceToken \
-  --ref-provider default \
-  --ref-source env \
-  --ref-id FUDUO_INTERNAL_SERVICE_TOKEN
+# OpenClaw validates plugin configuration after every write. Load the plugin,
+# its required settings and the internal model atomically so no invalid
+# intermediate configuration can prevent a fresh container from starting.
+$OPENCLAW config set --batch-file /app/deploy/openclaw-model-config.batch.json --replace
 
 # The WeChat agent is a read-only business assistant. Keep every built-in
 # filesystem, runtime, browser, network and agent tool outside its policy.
@@ -20,10 +17,6 @@ $OPENCLAW config set tools.allow \
 $OPENCLAW config set tools.deny \
   '["group:openclaw","group:fs","group:runtime","canvas"]' \
   --strict-json
-
-# OpenClaw only sees a fixed internal model. The API resolves the currently
-# selected default and fallback profiles for every request.
-$OPENCLAW config set --batch-file /app/deploy/openclaw-model-config.batch.json --replace
 
 if ! $OPENCLAW plugins inspect openclaw-weixin --runtime --json >/dev/null 2>&1; then
   $OPENCLAW plugins install @tencent-weixin/openclaw-weixin@2.4.6 --force

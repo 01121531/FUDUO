@@ -1,5 +1,25 @@
 [
   {
+    "path": "plugins.load.paths",
+    "value": ["/app/plugins/openclaw-fuduo"]
+  },
+  {
+    "path": "plugins.entries.fuduo-business.enabled",
+    "value": true
+  },
+  {
+    "path": "plugins.entries.fuduo-business.config.apiBaseUrl",
+    "value": "http://api:3001/api"
+  },
+  {
+    "path": "plugins.entries.fuduo-business.config.serviceToken",
+    "ref": {
+      "source": "env",
+      "provider": "default",
+      "id": "FUDUO_INTERNAL_SERVICE_TOKEN"
+    }
+  },
+  {
     "path": "models.mode",
     "value": "replace"
   },
